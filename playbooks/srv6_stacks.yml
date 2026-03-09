@@ -57,7 +57,7 @@
       ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/nfs_server.yml"
 
     - name: Enforce /opt/stacks ownership
-      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/stacks_permissions.yml"
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/stacks_owner.yml"
 
     - name: Assert required vault variables are present
       ansible.builtin.assert:

@@ -44,6 +44,9 @@
           - anythingllm_jwt_secret is defined and anythingllm_jwt_secret | length > 0
         fail_msg: "anythingllm_jwt_secret missing — add it to vault.yml"
 
+    - name: Mount NFS storage from srv6 and replace /opt/stacks symlink
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/nfs_client.yml"
+
     - name: Enforce /opt/stacks ownership
       ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/stacks_owner.yml"
 

@@ -53,6 +53,9 @@
           Missing vault variables. Ensure all required vars are set in vault.yml.
           See playbook header for full list.
 
+    - name: Mount NFS storage from srv6 and replace /opt/stacks symlink
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/nfs_client.yml"
+
     - name: Enforce /opt/stacks ownership
       ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/stacks_owner.yml"
 

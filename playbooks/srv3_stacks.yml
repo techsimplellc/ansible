@@ -42,6 +42,9 @@
           Missing vault variables. Ensure these are set in vault.yml:
           firefly_db_password, firefly_app_key, firefly_importer_token
 
+    - name: Mount NFS storage from srv6 and replace /opt/stacks symlink
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/nfs_client.yml"
+
     - name: Enforce /opt/stacks ownership
       ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/stacks_owner.yml"
 

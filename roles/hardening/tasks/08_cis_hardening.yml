@@ -31,7 +31,12 @@
   notify: Apply sysctl
 
 # CIS 2.x — Disable unnecessary services
-- name: Disable and stop unnecessary services
+# Gathers service facts first so only installed services are targeted.
+# Services not present on the host are silently skipped — no errors.
+- name: Gather service facts
+  ansible.builtin.service_facts:
+
+- name: Disable and stop unnecessary services (installed only)
   ansible.builtin.systemd:
     name: "{{ item }}"
     enabled: false
@@ -41,14 +46,14 @@
     - cups
     - isc-dhcp-server
     - slapd
-    - nfs-server
+    - nfs-kernel-server
     - rpcbind
     - bind9
     - vsftpd
     - apache2
     - nginx
     - postfix
-  ignore_errors: true
+  when: (item ~ '.service') in ansible_facts.services
 
 # CIS 5.4.x — Password quality
 - name: Install libpam-pwquality
