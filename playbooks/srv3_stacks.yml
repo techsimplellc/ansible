@@ -25,7 +25,7 @@
   vars:
     stacks_root: /opt/stacks
     docker_network: proxy
-    stacks:
+    stack_dirs:
       - postgres
       - metube
       - firefly
@@ -49,7 +49,7 @@
         owner: root
         group: root
         mode: "0755"
-      loop: "{{ stacks }}"
+      loop: "{{ stack_dirs }}"
 
     - name: Ensure shared Docker network exists
       community.docker.docker_network:
@@ -57,8 +57,25 @@
         state: present
 
   tasks:
-    - name: Deploy stack {{ item }}
+    - name: Deploy postgres stack
       ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
       vars:
-        stack_name: "{{ item }}"
-      loop: "{{ stacks }}"
+        stack_name: postgres
+
+    - name: Deploy metube stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: metube
+
+    - name: Wait for postgres to be ready before starting Firefly
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 5432
+        delay: 5
+        timeout: 60
+        msg: "Timed out waiting for PostgreSQL on port 5432"
+
+    - name: Deploy firefly stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: firefly

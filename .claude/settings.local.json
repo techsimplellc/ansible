@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ansible:*)",
+      "Bash(ssh:*)",
+      "Bash(ansible-galaxy collection:*)"
+    ]
+  }
+}
