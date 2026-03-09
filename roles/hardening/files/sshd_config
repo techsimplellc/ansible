@@ -1,0 +1,46 @@
+# PPF Homelab — Hardened SSH — CIS Ubuntu 24.04 L1 §5.1
+
+Port 2222
+Protocol 2
+AddressFamily inet
+
+# No root login — by password or key
+PermitRootLogin no
+
+# Key auth only — no passwords
+PubkeyAuthentication yes
+AuthorizedKeysFile .ssh/authorized_keys
+PasswordAuthentication no
+PermitEmptyPasswords no
+ChallengeResponseAuthentication no
+KbdInteractiveAuthentication no
+UsePAM yes
+
+# Attack surface reduction
+X11Forwarding no
+AllowTcpForwarding no
+GatewayPorts no
+PermitUserEnvironment no
+AllowAgentForwarding no
+PermitTunnel no
+
+# Session limits
+LoginGraceTime 30
+MaxAuthTries 3
+MaxSessions 4
+ClientAliveInterval 300
+ClientAliveCountMax 2
+
+# Verbose auth logging
+SyslogFacility AUTH
+LogLevel VERBOSE
+
+# Ciphers — Mozilla Modern SSH profile
+KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,ecdh-sha2-nistp521,ecdh-sha2-nistp384,ecdh-sha2-nistp256,diffie-hellman-group-exchange-sha256
+Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr
+MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com
+
+# Explicit user allowlist
+AllowUsers bpainter docker-admin
+
+Banner /etc/ssh/banner.txt

@@ -1,0 +1,8 @@
+---
+- name: Deploy PPF security log rotation config
+  ansible.builtin.copy:
+    src: ppf-security.logrotate
+    dest: /etc/logrotate.d/ppf-security
+    owner: root
+    group: root
+    mode: "0644"

@@ -1,0 +1,39 @@
+# Repo path: ~/git/ansible/playbooks/templates/adguardhome/docker-compose.yml.j2
+---
+# AdGuard Home — Network-wide DNS + DHCP + ad blocking
+# Docs : https://github.com/AdguardTeam/AdGuardHome/wiki/Docker
+# Image: https://hub.docker.com/r/adguard/adguardhome
+#
+# First-run setup wizard available at http://<server-ip>:3000
+# After setup, admin UI moves to http://<server-ip>:3001
+#
+# IMPORTANT: Disable systemd-resolved stub listener before deploying
+# to free up port 53 on the host:
+#   This is handled by the pre-task in the playbook.
+
+services:
+  adguardhome:
+    image: adguard/adguardhome:latest
+    container_name: adguardhome
+    restart: unless-stopped
+    ports:
+      - "53:53/tcp"     # DNS over TCP
+      - "53:53/udp"     # DNS over UDP
+      - "3000:3000/tcp" # First-run setup wizard (can be removed after setup)
+      - "3001:3001/tcp" # Admin UI (post-setup)
+      - "67:67/udp"     # DHCP server
+    volumes:
+      - adguard_work:/opt/adguardhome/work
+      - adguard_conf:/opt/adguardhome/conf
+    networks:
+      - proxy
+    cap_add:
+      - NET_ADMIN       # Required for DHCP
+
+volumes:
+  adguard_work:
+  adguard_conf:
+
+networks:
+  proxy:
+    external: true

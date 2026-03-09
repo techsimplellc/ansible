@@ -1,0 +1,72 @@
+---
+- name: Deploy bpainter authorized key
+  ansible.posix.authorized_key:
+    user: bpainter
+    key: "{{ bpainter_pubkey }}"
+    state: present
+    exclusive: true
+
+- name: Deploy docker-admin authorized key
+  ansible.posix.authorized_key:
+    user: docker-admin
+    key: "{{ docker_admin_pubkey }}"
+    state: present
+    exclusive: true
+
+- name: Back up original sshd_config (first run only)
+  ansible.builtin.copy:
+    src: /etc/ssh/sshd_config
+    dest: /etc/ssh/sshd_config.bak
+    remote_src: true
+    force: false
+
+- name: Deploy hardened sshd_config
+  ansible.builtin.copy:
+    src: sshd_config
+    dest: /etc/ssh/sshd_config
+    owner: root
+    group: root
+    mode: "0600"
+    force: true
+    validate: /usr/sbin/sshd -t -f %s
+  notify: Restart SSH
+
+- name: Deploy SSH login banner
+  ansible.builtin.copy:
+    src: banner.txt
+    dest: /etc/ssh/banner.txt
+    owner: root
+    group: root
+    mode: "0644"
+
+# The UFW rule for port 2222 must be in place before sshd restarts.
+# Full UFW setup (default deny, enable) happens in 04_ufw.yml.
+- name: Allow SSH on port 2222 from LAN before sshd restarts
+  community.general.ufw:
+    rule: allow
+    from_ip: "{{ lan_subnet }}"
+    to_port: "2222"
+    proto: tcp
+    comment: "SSH LAN only"
+
+# Flush now so SSH restarts before the wait_for probe below.
+- name: Flush handlers to restart SSH immediately
+  ansible.builtin.meta: flush_handlers
+
+- name: Wait for SSH to come back up on port 2222
+  ansible.builtin.wait_for:
+    host: "{{ ansible_host }}"
+    port: 2222
+    delay: 5
+    timeout: 30
+    state: started
+  delegate_to: localhost
+  become: false
+
+# Update the connection port so remaining tasks use 2222.
+- name: Set ansible_port to 2222 for remaining tasks
+  ansible.builtin.set_fact:
+    ansible_port: 2222
+
+- name: Reset SSH connection to use port 2222
+  ansible.builtin.meta: reset_connection

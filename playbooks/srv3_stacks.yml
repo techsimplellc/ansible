@@ -1,0 +1,64 @@
+# Repo path: ~/git/ansible/playbooks/srv3_stacks.yml
+---
+# =============================================================================
+# srv3_stacks.yml — Deploy Docker Compose stacks to srv3 (192.168.68.13)
+# Docs:
+#   MeTube          : https://github.com/alexta69/metube
+#   Firefly III     : https://docs.firefly-iii.org/
+#   Firefly Importer: https://docs.firefly-iii.org/how-to/data-importer/
+#   PostgreSQL      : https://hub.docker.com/_/postgres
+#
+# Vault requirements (ansible-vault edit group_vars/all/vault.yml):
+#   firefly_db_password  : "YOUR_DB_PASSWORD"
+#   firefly_app_key      : "YOUR_32_CHAR_APP_KEY"  # generate: openssl rand -base64 32
+#   firefly_importer_token: "YOUR_PERSONAL_ACCESS_TOKEN"  # generated in Firefly III UI
+#
+# Run:
+#   ansible-playbook playbooks/srv3_stacks.yml -i inventory.yml --limit srv3 --ask-vault-pass --become
+# =============================================================================
+
+- name: Deploy Docker Compose stacks to srv3
+  hosts: srv3
+  become: true
+  gather_facts: true
+
+  vars:
+    stacks_root: /opt/stacks
+    docker_network: proxy
+    stacks:
+      - postgres
+      - metube
+      - firefly
+      - firefly-importer
+
+  pre_tasks:
+    - name: Assert required vault variables are present
+      ansible.builtin.assert:
+        that:
+          - firefly_db_password is defined and firefly_db_password | length > 0
+          - firefly_app_key is defined and firefly_app_key | length > 0
+          - firefly_importer_token is defined and firefly_importer_token | length > 0
+        fail_msg: >
+          Missing vault variables. Ensure these are set in vault.yml:
+          firefly_db_password, firefly_app_key, firefly_importer_token
+
+    - name: Ensure stack directories exist
+      ansible.builtin.file:
+        path: "{{ stacks_root }}/{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+      loop: "{{ stacks }}"
+
+    - name: Ensure shared Docker network exists
+      community.docker.docker_network:
+        name: "{{ docker_network }}"
+        state: present
+
+  tasks:
+    - name: Deploy stack {{ item }}
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: "{{ item }}"
+      loop: "{{ stacks }}"

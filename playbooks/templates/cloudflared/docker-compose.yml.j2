@@ -1,0 +1,20 @@
+# Repo path: ~/git/ansible/playbooks/templates/cloudflared/docker-compose.yml.j2
+---
+# cloudflared — Cloudflare Zero Trust tunnel
+# Docs: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/deploy-tunnels/deployment-guides/docker/
+# Image: https://hub.docker.com/r/cloudflare/cloudflared
+
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: "{{ cloudflared_tunnel_token }}"
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    external: true

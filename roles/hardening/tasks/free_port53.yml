@@ -1,0 +1,29 @@
+---
+# free_port53.yml — Disable systemd-resolved stub listener to free port 53 for AdGuard Home
+# Docs: https://github.com/AdguardTeam/AdGuardHome/wiki/Docker#resolved
+#
+# systemd-resolved binds 127.0.0.53:53 by default on Ubuntu.
+# This conflicts with AdGuard Home's DNS listener on 0.0.0.0:53.
+# This task disables the stub resolver while keeping name resolution functional.
+
+- name: Disable systemd-resolved stub listener
+  ansible.builtin.lineinfile:
+    path: /etc/systemd/resolved.conf
+    regexp: "^#?DNSStubListener="
+    line: "DNSStubListener=no"
+    state: present
+  register: resolved_conf
+
+- name: Point /etc/resolv.conf to systemd-resolved runtime file
+  ansible.builtin.file:
+    src: /run/systemd/resolve/resolv.conf
+    dest: /etc/resolv.conf
+    state: link
+    force: true
+
+- name: Restart systemd-resolved to apply stub listener change
+  ansible.builtin.systemd:
+    name: systemd-resolved
+    state: restarted
+    daemon_reload: true
+  when: resolved_conf.changed

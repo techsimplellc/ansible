@@ -1,0 +1,130 @@
+---
+# CIS 1.1.1.x — Disable unused filesystems
+- name: Deploy filesystem module restrictions
+  ansible.builtin.copy:
+    src: cis-filesystem.conf
+    dest: /etc/modprobe.d/cis-filesystem.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Update initramfs
+
+# CIS 3.x — Kernel parameter hardening
+- name: Deploy CIS sysctl hardening config
+  ansible.builtin.copy:
+    src: 99-cis-hardening.conf
+    dest: /etc/sysctl.d/99-cis-hardening.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Apply sysctl
+
+# srv1 only — Docker requires IP forwarding; overrides the CIS default of 0
+- name: Deploy Docker IP forwarding override
+  ansible.builtin.copy:
+    src: 99-docker-forward.conf
+    dest: /etc/sysctl.d/99-docker-forward.conf
+    owner: root
+    group: root
+    mode: "0644"
+  when: is_traefik_host | bool
+  notify: Apply sysctl
+
+# CIS 2.x — Disable unnecessary services
+- name: Disable and stop unnecessary services
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: false
+    state: stopped
+  loop:
+    - avahi-daemon
+    - cups
+    - isc-dhcp-server
+    - slapd
+    - nfs-server
+    - rpcbind
+    - bind9
+    - vsftpd
+    - apache2
+    - nginx
+    - postfix
+  ignore_errors: true
+
+# CIS 5.4.x — Password quality
+- name: Install libpam-pwquality
+  ansible.builtin.apt:
+    name: libpam-pwquality
+    state: present
+
+- name: Deploy pwquality config
+  ansible.builtin.copy:
+    src: pwquality.conf
+    dest: /etc/security/pwquality.conf
+    owner: root
+    group: root
+    mode: "0644"
+
+# CIS 6.1.x — File permission hardening
+- name: Harden /etc/passwd
+  ansible.builtin.file:
+    path: /etc/passwd
+    mode: "0644"
+
+- name: Harden /etc/passwd-
+  ansible.builtin.file:
+    path: /etc/passwd-
+    mode: "0000"
+
+- name: Harden /etc/shadow
+  ansible.builtin.file:
+    path: /etc/shadow
+    mode: "0640"
+
+- name: Harden /etc/shadow-
+  ansible.builtin.file:
+    path: /etc/shadow-
+    mode: "0000"
+
+- name: Harden /etc/group
+  ansible.builtin.file:
+    path: /etc/group
+    mode: "0644"
+
+- name: Harden /etc/group-
+  ansible.builtin.file:
+    path: /etc/group-
+    mode: "0000"
+
+- name: Harden /etc/gshadow
+  ansible.builtin.file:
+    path: /etc/gshadow
+    mode: "0600"
+
+- name: Harden /etc/sudoers
+  ansible.builtin.file:
+    path: /etc/sudoers
+    mode: "0640"
+
+- name: Harden /etc/sudoers.d
+  ansible.builtin.file:
+    path: /etc/sudoers.d
+    state: directory
+    mode: "0750"
+
+# CIS 5.4.x — Auto-logout idle sessions
+- name: Deploy idle session timeout (TMOUT=900)
+  ansible.builtin.copy:
+    src: tmout.sh
+    dest: /etc/profile.d/tmout.sh
+    owner: root
+    group: root
+    mode: "0755"
+
+# CIS 1.5.x — Disable core dumps
+- name: Deploy core dump restriction
+  ansible.builtin.copy:
+    src: cis-coredump.conf
+    dest: /etc/security/limits.d/cis-coredump.conf
+    owner: root
+    group: root
+    mode: "0644"

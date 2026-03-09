@@ -1,0 +1,8 @@
+---
+- name: Create /opt/stacks with setgid and docker-admin group ownership
+  ansible.builtin.file:
+    path: /opt/stacks
+    state: directory
+    owner: root
+    group: docker-admin
+    mode: "2775"

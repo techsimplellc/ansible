@@ -1,0 +1,11 @@
+/var/log/auth.log /var/log/sudo.log /var/log/kern.log /var/log/cron.log {
+    rotate 52
+    weekly
+    missingok
+    notifempty
+    compress
+    delaycompress
+    postrotate
+        /usr/lib/rsyslog/rsyslog-rotate
+    endscript
+}

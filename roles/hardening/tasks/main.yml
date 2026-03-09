@@ -1,0 +1,36 @@
+---
+- import_tasks: 01_update.yml
+  tags: update
+
+- import_tasks: 02_users.yml
+  tags: users
+
+- import_tasks: 03_ssh.yml
+  tags: ssh
+
+- import_tasks: 04_ufw.yml
+  tags: ufw
+
+- import_tasks: 05_fail2ban.yml
+  tags: fail2ban
+
+- import_tasks: 06_unattended_upgrades.yml
+  tags: upgrades
+
+- import_tasks: 07_rsyslog.yml
+  tags: rsyslog
+
+- import_tasks: 08_cis_hardening.yml
+  tags: cis
+
+- import_tasks: 09_opt_stack.yml
+  tags: opt_stack
+
+- import_tasks: 10_docker.yml
+  tags: docker
+
+- import_tasks: 11_logrotate.yml
+  tags: logrotate
+
+- import_tasks: 12_verify.yml
+  tags: verify

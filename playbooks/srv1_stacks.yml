@@ -1,0 +1,76 @@
+# Repo path: ~/git/ansible/playbooks/srv1_stacks.yml
+---
+# =============================================================================
+# deploy_stacks.yml — Deploy Docker Compose stacks to srv1
+# Docs:
+#   cloudflared : https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/
+#   NPM         : https://nginxproxymanager.com/
+#   Whoogle     : https://github.com/benbusby/whoogle-search
+#   AdGuard Home: https://github.com/AdguardTeam/AdGuardHome
+#
+# Vault requirements (ansible-vault edit group_vars/all/vault.yml):
+#   cloudflared_tunnel_token: "YOUR_TUNNEL_TOKEN"
+#
+# Run:
+#   ansible-playbook playbooks/deploy_stacks.yml -i inventory.yml --limit srv1 --ask-vault-pass --become
+# =============================================================================
+
+- name: Deploy Docker Compose stacks to srv1
+  hosts: srv1
+  become: true
+  gather_facts: true
+
+  vars:
+    stacks_root: /opt/stacks
+    docker_network: proxy
+    stacks:
+      - cloudflared
+      - npm
+      - whoogle
+      - adguardhome
+
+  pre_tasks:
+    - name: Assert vault token is present
+      ansible.builtin.assert:
+        that:
+          - cloudflared_tunnel_token is defined
+          - cloudflared_tunnel_token | length > 0
+        fail_msg: "cloudflared_tunnel_token missing — add it to vault.yml"
+
+    - name: Ensure stack directories exist
+      ansible.builtin.file:
+        path: "{{ stacks_root }}/{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+      loop: "{{ stacks }}"
+
+    - name: Ensure shared Docker network exists
+      community.docker.docker_network:
+        name: "{{ docker_network }}"
+        state: present
+
+    - name: Free port 53 for AdGuard Home
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/free_port53.yml"
+
+  tasks:
+    - name: Deploy cloudflared stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: cloudflared
+
+    - name: Deploy Nginx Proxy Manager stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: npm
+
+    - name: Deploy Whoogle stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: whoogle
+
+    - name: Deploy AdGuard Home stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: adguardhome

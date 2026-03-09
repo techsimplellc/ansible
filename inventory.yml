@@ -1,0 +1,21 @@
+---
+all:
+  vars:
+    ansible_port: 2222
+  children:
+    farm:
+      hosts:
+        srv1:
+          ansible_host: 192.168.68.11
+        srv3:
+          ansible_host: 192.168.68.13
+        srv4:
+          ansible_host: 192.168.68.14
+        srv5:
+          ansible_host: 192.168.68.15
+        srv6:
+          ansible_host: 192.168.68.16
+    dev:
+      hosts:
+        dev1:
+          ansible_host: 192.168.68.21

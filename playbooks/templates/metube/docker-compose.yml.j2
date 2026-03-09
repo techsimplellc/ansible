@@ -1,0 +1,31 @@
+# Repo path: ~/git/ansible/playbooks/templates/metube/docker-compose.yml.j2
+---
+# MeTube — Self-hosted YouTube downloader (yt-dlp web UI)
+# Docs : https://github.com/alexta69/metube
+# Image: https://ghcr.io/alexta69/metube
+#
+# Access via NPM proxy on srv1 — point proxy host to http://192.168.68.13:8081
+# Downloads land in /opt/stacks/metube/downloads on the host
+
+services:
+  metube:
+    image: ghcr.io/alexta69/metube:latest
+    container_name: metube
+    restart: unless-stopped
+    environment:
+      DOWNLOAD_DIR: /downloads
+      AUDIO_DOWNLOAD_DIR: /downloads/audio
+      DELETE_FILE_ON_TRASHCAN: "true"
+      YTDL_OPTIONS: '{"format":"bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"}'
+    volumes:
+      - "{{ stacks_root }}/metube/downloads:/downloads"
+    expose:
+      - "8081"
+    ports:
+      - "8081:8081"     # Expose for NPM proxy on srv1 to reach
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    external: true

@@ -1,0 +1,16 @@
+---
+- name: Update apt cache and run full-upgrade
+  ansible.builtin.apt:
+    update_cache: true
+    upgrade: full
+    cache_valid_time: 0
+
+- name: Autoremove unused packages and clean cache
+  ansible.builtin.apt:
+    autoremove: true
+    autoclean: true
+
+- name: Install UFW
+  ansible.builtin.apt:
+    name: ufw
+    state: present

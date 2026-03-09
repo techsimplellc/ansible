@@ -1,0 +1,36 @@
+# Repo path: ~/git/ansible/playbooks/templates/npm/docker-compose.yml.j2
+---
+# Nginx Proxy Manager
+# Docs : https://nginxproxymanager.com/setup/
+# Image: https://hub.docker.com/r/jc21/nginx-proxy-manager
+#
+# First-run admin credentials (change immediately after first login):
+#   Email   : admin@example.com
+#   Password: changeme
+
+services:
+  npm:
+    image: jc21/nginx-proxy-manager:latest
+    container_name: npm
+    restart: unless-stopped
+    ports:
+      - "80:80"       # HTTP
+      - "443:443"     # HTTPS
+      - "81:81"       # Admin UI — restrict at firewall, do not expose externally
+    volumes:
+      - npm_data:/data
+      - npm_letsencrypt:/etc/letsencrypt
+    networks:
+      - proxy
+    healthcheck:
+      test: ["CMD", "/usr/bin/check-health"]
+      interval: 10s
+      timeout: 3s
+
+volumes:
+  npm_data:
+  npm_letsencrypt:
+
+networks:
+  proxy:
+    external: true

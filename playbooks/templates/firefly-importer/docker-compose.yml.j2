@@ -1,0 +1,36 @@
+# Repo path: ~/git/ansible/playbooks/templates/firefly-importer/docker-compose.yml.j2
+---
+# Firefly III Data Importer
+# Docs : https://docs.firefly-iii.org/how-to/data-importer/installation/docker/
+# Image: https://hub.docker.com/r/fireflyiii/data-importer
+#
+# FIREFLY_III_ACCESS_TOKEN: generate a Personal Access Token in Firefly III UI
+#   Profile → OAuth → Personal Access Tokens → Create New Token
+#
+# Access via NPM proxy on srv1 — point proxy host to http://192.168.68.13:8082
+# The importer must be able to reach Firefly III — both are on the proxy network.
+
+services:
+  firefly-importer:
+    image: fireflyiii/data-importer:latest
+    container_name: firefly-importer
+    restart: unless-stopped
+    depends_on:
+      - firefly
+    environment:
+      FIREFLY_III_URL: "http://firefly:8080"
+      FIREFLY_III_ACCESS_TOKEN: "{{ firefly_importer_token }}"
+      TRUSTED_PROXIES: "**"
+      # Auto-import via CSV/CAMT/OFX — set to true if using nordigen/spectre
+      USE_NORDIGEN: "false"
+      USE_SPECTRE: "false"
+    expose:
+      - "8080"
+    ports:
+      - "8082:8080"     # Expose for NPM proxy on srv1 to reach
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    external: true

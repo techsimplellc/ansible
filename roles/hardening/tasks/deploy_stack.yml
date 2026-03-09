@@ -1,0 +1,24 @@
+---
+# Reusable task: renders a compose template and runs docker compose up
+# Required vars: stack_name, stack_template
+
+- name: "{{ stack_name }} | Render docker-compose.yml"
+  ansible.builtin.template:
+    src: "{{ stack_template }}"
+    dest: "{{ stacks_root }}/{{ stack_name }}/docker-compose.yml"
+    owner: root
+    group: root
+    mode: "0640"
+  register: compose_file
+
+- name: "{{ stack_name }} | Pull latest images"
+  community.docker.docker_compose_v2:
+    project_src: "{{ stacks_root }}/{{ stack_name }}"
+    pull: always
+    state: present
+  when: compose_file.changed
+
+- name: "{{ stack_name }} | Bring stack up"
+  community.docker.docker_compose_v2:
+    project_src: "{{ stacks_root }}/{{ stack_name }}"
+    state: present

@@ -1,0 +1,61 @@
+---
+- name: Verify root account is locked
+  ansible.builtin.command: passwd -S root
+  register: root_lock_status
+  changed_when: false
+  failed_when: "' L ' not in root_lock_status.stdout"
+
+- name: Verify SSH is listening on port 2222
+  ansible.builtin.command: ss -tlnp
+  register: ss_output
+  changed_when: false
+  failed_when: "'2222' not in ss_output.stdout"
+
+- name: Verify PasswordAuthentication is disabled
+  ansible.builtin.command: grep "^PasswordAuthentication" /etc/ssh/sshd_config
+  register: pwd_auth_check
+  changed_when: false
+  failed_when: "'no' not in pwd_auth_check.stdout"
+
+- name: Verify UFW is active
+  ansible.builtin.command: ufw status
+  register: ufw_status
+  changed_when: false
+  failed_when: "'active' not in ufw_status.stdout"
+
+- name: Verify ASLR is set to 2
+  ansible.builtin.command: sysctl kernel.randomize_va_space
+  register: aslr_check
+  changed_when: false
+  failed_when: "'= 2' not in aslr_check.stdout"
+
+- name: Verify fail2ban is active
+  ansible.builtin.command: systemctl is-active fail2ban
+  register: f2b_check
+  changed_when: false
+  failed_when: f2b_check.stdout != 'active'
+
+- name: Verify rsyslog is active
+  ansible.builtin.command: systemctl is-active rsyslog
+  register: rsyslog_check
+  changed_when: false
+  failed_when: rsyslog_check.stdout != 'active'
+
+- name: Verify unattended-upgrades is enabled
+  ansible.builtin.command: systemctl is-enabled unattended-upgrades
+  register: uu_check
+  changed_when: false
+  failed_when: "'enabled' not in uu_check.stdout"
+
+- name: Verification summary
+  ansible.builtin.debug:
+    msg:
+      - "=== Hardening verification complete: {{ inventory_hostname }} ==="
+      - "  root locked   : OK"
+      - "  SSH port 2222 : OK"
+      - "  no pwd auth   : OK"
+      - "  UFW active    : OK"
+      - "  ASLR = 2      : OK"
+      - "  fail2ban      : OK"
+      - "  rsyslog       : OK"
+      - "  auto-upgrades : OK"

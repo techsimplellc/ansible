@@ -1,0 +1,47 @@
+---
+- name: Install rsyslog
+  ansible.builtin.apt:
+    name: rsyslog
+    state: present
+
+- name: Deploy PPF rsyslog hardening config
+  ansible.builtin.copy:
+    src: 99-ppf-hardening.conf
+    dest: /etc/rsyslog.d/99-ppf-hardening.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart rsyslog
+
+- name: Ensure /var/log/sudo.log exists with correct ownership
+  ansible.builtin.file:
+    path: /var/log/sudo.log
+    state: touch
+    owner: root
+    group: adm
+    mode: "0640"
+    modification_time: preserve
+    access_time: preserve
+
+- name: Ensure /var/log/cron.log exists with correct ownership
+  ansible.builtin.file:
+    path: /var/log/cron.log
+    state: touch
+    owner: root
+    group: adm
+    mode: "0640"
+    modification_time: preserve
+    access_time: preserve
+
+- name: Set ownership and permissions on /var/log/auth.log
+  ansible.builtin.file:
+    path: /var/log/auth.log
+    owner: root
+    group: adm
+    mode: "0640"
+
+- name: Enable and start rsyslog
+  ansible.builtin.systemd:
+    name: rsyslog
+    enabled: true
+    state: started

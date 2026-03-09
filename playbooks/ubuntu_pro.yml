@@ -1,0 +1,111 @@
+# Repo path: ~/git/ansible/playbooks/ubuntu_pro.yml
+---
+# Ubuntu Pro Attach Playbook
+# Docs: https://canonical-ubuntu-pro-client.readthedocs-hosted.com/en/latest/
+#
+# Token is loaded exclusively from an Ansible Vault file.
+# NEVER pass the token via -e or in plaintext.
+#
+# Setup (one-time):
+#   ansible-vault create group_vars/all/vault.yml
+#   # Add:  ubuntu_pro_token: "YOUR_TOKEN"
+#
+# Run:
+#   ansible-playbook playbooks/ubuntu_pro.yml -i inventory.ini --limit srv1 --ask-vault-pass --become
+#
+# Requirements:
+#   - Ubuntu 20.04+ on target hosts
+#   - ubuntu-advantage-tools >= 27.x (ships by default on 22.04+)
+#   - Become (sudo) privileges on target hosts
+
+- name: Attach Ubuntu Pro subscription
+  hosts: all
+  become: true
+  gather_facts: true
+
+  # group_vars/all/vault.yml is auto-loaded by Ansible — no vars_files needed.
+  # Vault must contain: ubuntu_pro_token: "YOUR_TOKEN"
+
+  vars:
+    # ubuntu_pro_token is sourced directly from the vault.
+    # Never redefine or override this with -e in production.
+
+    # Optional: list of ESM/Pro services to enable after attach.
+    # Full list: esm-infra, esm-apps, livepatch, fips, fips-updates, usg, realtime-kernel
+    ubuntu_pro_services:
+      - esm-infra
+      - esm-apps
+
+  pre_tasks:
+    - name: Assert ubuntu_pro_token is provided
+      ansible.builtin.assert:
+        that:
+          - ubuntu_pro_token is defined
+          - ubuntu_pro_token | length > 0
+        fail_msg: "ubuntu_pro_token is missing. Ensure ubuntu_pro_token is set in group_vars/all/vault.yml and --ask-vault-pass is used."
+
+    - name: Assert target is Ubuntu
+      ansible.builtin.assert:
+        that:
+          - ansible_distribution == "Ubuntu"
+        fail_msg: "This playbook targets Ubuntu only. Detected: {{ ansible_distribution }}"
+
+    - name: Assert Ubuntu version is 20.04 or newer
+      ansible.builtin.assert:
+        that:
+          - ansible_distribution_version is version('20.04', '>=')
+        fail_msg: "Ubuntu Pro requires 20.04+. Detected: {{ ansible_distribution_version }}"
+
+  tasks:
+    - name: Ensure ubuntu-advantage-tools is installed and up to date
+      ansible.builtin.apt:
+        name: ubuntu-advantage-tools
+        state: latest
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Check current Ubuntu Pro attachment status
+      ansible.builtin.command:
+        cmd: pro status --format json
+      register: pro_status_raw
+      changed_when: false
+      failed_when: false
+
+    - name: Parse Pro status JSON
+      ansible.builtin.set_fact:
+        pro_status: "{{ pro_status_raw.stdout | from_json }}"
+
+    - name: Attach Ubuntu Pro token (skip if already attached)
+      ansible.builtin.command:
+        argv:
+          - pro
+          - attach
+          - "{{ ubuntu_pro_token }}"
+      register: pro_attach_result
+      changed_when: "'Successfully attached' in pro_attach_result.stdout"
+      failed_when:
+        - pro_attach_result.rc != 0
+        - "'already attached' not in pro_attach_result.stderr | default('')"
+      when: pro_status.attached is defined and not pro_status.attached
+      no_log: true  # Suppress token from logs
+
+    - name: Enable configured Ubuntu Pro services
+      ansible.builtin.command:
+        cmd: pro enable {{ item }} --assume-yes
+      loop: "{{ ubuntu_pro_services }}"
+      register: pro_enable_result
+      changed_when: "'Enabling' in pro_enable_result.stdout"
+      failed_when:
+        - pro_enable_result.rc != 0
+        - "'already enabled' not in pro_enable_result.stdout | default('')"
+        - "'not available' not in pro_enable_result.stdout | default('')"
+
+    - name: Capture final Pro status
+      ansible.builtin.command:
+        cmd: pro status
+      register: pro_final_status
+      changed_when: false
+
+    - name: Display final Pro status
+      ansible.builtin.debug:
+        msg: "{{ pro_final_status.stdout_lines }}"

@@ -1,0 +1,77 @@
+# Repo path: ~/git/ansible/roles/hardening/tasks/02_users.yml
+---
+- name: Create bpainter user
+  ansible.builtin.user:
+    name: bpainter
+    comment: "Root Admin"
+    shell: /bin/bash
+    groups: sudo
+    append: true
+    create_home: true
+    state: present
+  tags:
+    - users
+    - users_bpainter
+
+- name: Deploy passwordless sudo rule for bpainter
+  ansible.builtin.copy:
+    src: sudoers-bpainter
+    dest: /etc/sudoers.d/bpainter
+    owner: root
+    group: root
+    mode: "0440"
+    validate: /usr/sbin/visudo -cf %s
+  tags:
+    - users
+    - users_bpainter
+    - sudoers
+    - sudoers_bpainter
+
+- name: Create docker-admin user
+  ansible.builtin.user:
+    name: docker-admin
+    comment: "Docker Stack Admin"
+    shell: /bin/bash
+    create_home: true
+    state: present
+  tags:
+    - users
+    - users_docker_admin
+
+- name: Deploy restricted sudo rule for docker-admin
+  ansible.builtin.copy:
+    src: sudoers-docker-admin
+    dest: /etc/sudoers.d/docker-admin
+    owner: root
+    group: root
+    mode: "0440"
+    validate: /usr/sbin/visudo -cf %s
+  tags:
+    - users
+    - users_docker_admin
+    - sudoers
+    - sudoers_docker_admin
+
+- name: Lock root account
+  ansible.builtin.user:
+    name: root
+    password_lock: true
+  tags:
+    - users
+    - users_root
+
+- name: Set password aging policy for bpainter
+  ansible.builtin.command: chage --maxdays 365 --mindays 1 --warndays 7 bpainter
+  changed_when: false
+  tags:
+    - users
+    - users_bpainter
+    - password_policy
+
+- name: Set password aging policy for docker-admin
+  ansible.builtin.command: chage --maxdays 365 --mindays 1 --warndays 7 docker-admin
+  changed_when: false
+  tags:
+    - users
+    - users_docker_admin
+    - password_policy

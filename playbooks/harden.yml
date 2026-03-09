@@ -1,0 +1,37 @@
+---
+# Play 1: Detect which SSH port is currently active on each host.
+# On a fresh host, SSH listens on port 22. After the first hardening run, it
+# moves to port 2222. This play probes from the control node so the playbook
+# works correctly on both first-run and subsequent idempotent runs.
+- name: Detect active SSH port
+  hosts: "{{ target | default('all') }}"
+  gather_facts: false
+  tasks:
+    - name: Check if SSH is already listening on port 2222
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 2222
+        timeout: 5
+        state: started
+      delegate_to: localhost
+      become: false
+      ignore_errors: true
+      register: port_2222_check
+
+    - name: "SSH not yet on 2222 -- will connect via port 22 for this run"
+      ansible.builtin.set_fact:
+        ansible_port: 22
+      when: port_2222_check.failed | bool
+
+    - name: "SSH already on 2222 -- will use port 2222"
+      ansible.builtin.set_fact:
+        ansible_port: 2222
+      when: not (port_2222_check.failed | bool)
+
+# Play 2: Apply hardening role.
+# gather_facts runs here (with the correct port set in Play 1).
+- name: PPF Homelab -- OS Hardening and System Security
+  hosts: "{{ target | default('all') }}"
+  gather_facts: true
+  roles:
+    - hardening

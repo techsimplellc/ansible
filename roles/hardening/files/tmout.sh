@@ -1,0 +1,2 @@
+readonly TMOUT=900
+export TMOUT
