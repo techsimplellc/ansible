@@ -1,0 +1,40 @@
+# Repo path: ~/git/ansible/playbooks/templates/calcom/docker-compose.yml.j2
+---
+# cal.com — Self-hosted scheduling platform
+# Docs : https://cal.com/docs/self-hosting/docker
+# Image: https://hub.docker.com/r/calcom/cal.com
+#
+# Exposed via cloudflared tunnel through NPM on srv1.
+# NPM upstream: http://192.168.68.14:3000
+#
+# NEXTAUTH_SECRET: generate with: openssl rand -base64 32
+# NEXTAUTH_URL: must match your public domain set in NPM/cloudflared
+
+services:
+  calcom:
+    image: calcom/cal.com:latest
+    container_name: calcom
+    restart: unless-stopped
+    environment:
+      # Database
+      DATABASE_URL: "postgresql://calcom:{{ calcom_db_password }}@postgres-calcom:5432/calcom"
+      # Auth
+      NEXTAUTH_SECRET: "{{ calcom_nextauth_secret }}"
+      NEXTAUTH_URL: "https://cal.{{ ansible_domain | default('example.com') }}"
+      # App
+      NEXT_PUBLIC_WEBAPP_URL: "https://cal.{{ ansible_domain | default('example.com') }}"
+      NEXT_PUBLIC_LICENSE_CONSENT: "agree"
+      CALCOM_TELEMETRY_DISABLED: "1"
+    volumes:
+      - calcom_data:/calcom/.next
+    ports:
+      - "3000:3000"     # Exposed for NPM proxy on srv1
+    networks:
+      - proxy
+
+volumes:
+  calcom_data:
+
+networks:
+  proxy:
+    external: true

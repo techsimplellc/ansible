@@ -1,0 +1,32 @@
+# Repo path: ~/git/ansible/playbooks/templates/postgres-n8n/docker-compose.yml.j2
+---
+# PostgreSQL — Dedicated instance for n8n
+# Docs: https://hub.docker.com/_/postgres
+
+services:
+  postgres-n8n:
+    image: postgres:16-alpine
+    container_name: postgres-n8n
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: n8n
+      POSTGRES_PASSWORD: "{{ n8n_db_password }}"
+      POSTGRES_DB: n8n
+    volumes:
+      - postgres_n8n_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"     # Non-standard host port — avoids conflict with other postgres instances
+    networks:
+      - proxy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U n8n -d n8n"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_n8n_data:
+
+networks:
+  proxy:
+    external: true

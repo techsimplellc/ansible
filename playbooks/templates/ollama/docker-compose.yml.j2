@@ -1,0 +1,42 @@
+# Repo path: ~/git/ansible/playbooks/templates/ollama/docker-compose.yml.j2
+---
+# Ollama — Local LLM inference server
+# Docs : https://hub.docker.com/r/ollama/ollama
+# Image: https://hub.docker.com/r/ollama/ollama
+#
+# Models are stored on the dedicated NVMe disk mounted at /opt/stacks/models.
+# GPU passthrough requires NVIDIA Container Toolkit (handled by playbook pre_task).
+#
+# Exposed via cloudflared tunnel through NPM on srv1.
+# NPM upstream: http://192.168.68.15:11434
+#
+# To pull a model after deployment:
+#   docker exec ollama ollama pull llama3.2
+#   docker exec ollama ollama pull nomic-embed-text   # required for AnythingLLM embeddings
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: unless-stopped
+    environment:
+      OLLAMA_MODELS: /models
+      OLLAMA_HOST: "0.0.0.0:11434"
+      OLLAMA_KEEP_ALIVE: "24h"
+    volumes:
+      - "{{ models_mount }}:/models"
+    ports:
+      - "11434:11434"   # Exposed for NPM proxy on srv1
+    networks:
+      - proxy
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+networks:
+  proxy:
+    external: true

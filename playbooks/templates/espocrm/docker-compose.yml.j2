@@ -1,0 +1,44 @@
+# Repo path: ~/git/ansible/playbooks/templates/espocrm/docker-compose.yml.j2
+---
+# EspoCRM — Self-hosted CRM platform
+# Docs : https://docs.espocrm.com/administration/docker/
+# Image: https://hub.docker.com/r/espocrm/espocrm
+#
+# Exposed via cloudflared tunnel through NPM on srv1.
+# NPM upstream: http://192.168.68.14:8083
+#
+# First login credentials:
+#   Username: admin
+#   Password: set via ESPOCRM_ADMIN_PASSWORD vault var
+
+services:
+  espocrm:
+    image: espocrm/espocrm:latest
+    container_name: espocrm
+    restart: unless-stopped
+    environment:
+      # Database
+      ESPOCRM_DATABASE_DRIVER: pdo_pgsql
+      ESPOCRM_DATABASE_HOST: postgres-espocrm
+      ESPOCRM_DATABASE_PORT: 5432
+      ESPOCRM_DATABASE_NAME: espocrm
+      ESPOCRM_DATABASE_USER: espocrm
+      ESPOCRM_DATABASE_PASSWORD: "{{ espocrm_db_password }}"
+      # Admin
+      ESPOCRM_ADMIN_USERNAME: admin
+      ESPOCRM_ADMIN_PASSWORD: "{{ espocrm_admin_password }}"
+      # App
+      ESPOCRM_SITE_URL: "https://crm.{{ ansible_domain | default('example.com') }}"
+    volumes:
+      - espocrm_data:/var/www/html
+    ports:
+      - "8083:80"       # Exposed for NPM proxy on srv1
+    networks:
+      - proxy
+
+volumes:
+  espocrm_data:
+
+networks:
+  proxy:
+    external: true

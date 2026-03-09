@@ -1,0 +1,105 @@
+# Repo path: ~/git/ansible/playbooks/srv5_stacks.yml
+---
+# =============================================================================
+# srv5_stacks.yml — Deploy Docker Compose stacks to srv5 (192.168.68.15)
+# Docs:
+#   Ollama       : https://hub.docker.com/r/ollama/ollama
+#   AnythingLLM  : https://docs.anythingllm.com/installation/self-hosted/docker
+#   NVIDIA Docker: https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html
+#
+# Prerequisites on srv5 (handled by this playbook):
+#   - NVIDIA Container Toolkit installed
+#   - /dev/nvme1n1p1 (UUID: 18081cdc-9742-4142-9ad1-56d8374edd1a) mounted at /opt/stacks/models
+#
+# Both services are exposed via cloudflared tunnel through NPM on srv1:
+#   Ollama      NPM upstream: http://192.168.68.15:11434
+#   AnythingLLM NPM upstream: http://192.168.68.15:3001
+#
+# Vault requirements (ansible-vault edit group_vars/all/vault.yml):
+#   anythingllm_jwt_secret: "YOUR_JWT_SECRET"   # openssl rand -base64 32
+#
+# Run:
+#   ansible-playbook playbooks/srv5_stacks.yml -i inventory.yml --limit srv5 --ask-vault-pass --become
+# =============================================================================
+
+- name: Deploy Docker Compose stacks to srv5
+  hosts: srv5
+  become: true
+  gather_facts: true
+
+  vars:
+    stacks_root: /opt/stacks
+    docker_network: proxy
+    models_uuid: "18081cdc-9742-4142-9ad1-56d8374edd1a"
+    models_mount_base: "/mnt/nvme1"
+    models_mount: "/mnt/nvme1/models"
+    stack_dirs:
+      - ollama
+      - anythingllm
+
+  pre_tasks:
+    - name: Assert required vault variables are present
+      ansible.builtin.assert:
+        that:
+          - anythingllm_jwt_secret is defined and anythingllm_jwt_secret | length > 0
+        fail_msg: "anythingllm_jwt_secret missing — add it to vault.yml"
+
+    - name: Ensure stack directories exist
+      ansible.builtin.file:
+        path: "{{ stacks_root }}/{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+      loop: "{{ stack_dirs }}"
+
+    - name: Ensure partition mount point exists
+      ansible.builtin.file:
+        path: "{{ models_mount_base }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Mount NVMe partition by UUID
+      ansible.posix.mount:
+        path: "{{ models_mount_base }}"
+        src: "UUID={{ models_uuid }}"
+        fstype: ext4
+        opts: defaults,nofail
+        state: mounted
+
+    - name: Ensure models subdirectory exists on mounted partition
+      ansible.builtin.file:
+        path: "{{ models_mount }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Ensure shared Docker network exists
+      community.docker.docker_network:
+        name: "{{ docker_network }}"
+        state: present
+
+    - name: Install NVIDIA Container Toolkit prerequisites
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/nvidia_toolkit.yml"
+
+  tasks:
+    - name: Deploy ollama stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: ollama
+
+    - name: Wait for Ollama API to be ready
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 11434
+        delay: 5
+        timeout: 60
+        msg: "Timed out waiting for Ollama on port 11434"
+
+    - name: Deploy anythingllm stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: anythingllm

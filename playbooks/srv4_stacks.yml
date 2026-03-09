@@ -1,0 +1,126 @@
+# Repo path: ~/git/ansible/playbooks/srv4_stacks.yml
+---
+# =============================================================================
+# srv4_stacks.yml — Deploy Docker Compose stacks to srv4 (192.168.68.14)
+# Docs:
+#   n8n      : https://docs.n8n.io/hosting/installation/docker/
+#   cal.com  : https://cal.com/docs/self-hosting/docker
+#   EspoCRM  : https://docs.espocrm.com/administration/docker/
+#
+# Each app gets its own dedicated PostgreSQL container.
+# cal.com and EspoCRM are exposed via cloudflared tunnel through NPM on srv1.
+# n8n is internal LAN only.
+#
+# Vault requirements (ansible-vault edit group_vars/all/vault.yml):
+#   n8n_db_password          : "YOUR_PASSWORD"
+#   n8n_encryption_key       : "YOUR_32_CHAR_KEY"   # openssl rand -hex 16
+#   calcom_db_password       : "YOUR_PASSWORD"
+#   calcom_nextauth_secret   : "YOUR_SECRET"         # openssl rand -base64 32
+#   espocrm_db_password      : "YOUR_PASSWORD"
+#   espocrm_admin_password   : "YOUR_ADMIN_PASSWORD"
+#
+# Run:
+#   ansible-playbook playbooks/srv4_stacks.yml -i inventory.yml --limit srv4 --ask-vault-pass --become
+# =============================================================================
+
+- name: Deploy Docker Compose stacks to srv4
+  hosts: srv4
+  become: true
+  gather_facts: true
+
+  vars:
+    stacks_root: /opt/stacks
+    docker_network: proxy
+    stack_dirs:
+      - postgres-n8n
+      - postgres-calcom
+      - postgres-espocrm
+      - n8n
+      - calcom
+      - espocrm
+
+  pre_tasks:
+    - name: Assert required vault variables are present
+      ansible.builtin.assert:
+        that:
+          - n8n_db_password is defined and n8n_db_password | length > 0
+          - n8n_encryption_key is defined and n8n_encryption_key | length > 0
+          - calcom_db_password is defined and calcom_db_password | length > 0
+          - calcom_nextauth_secret is defined and calcom_nextauth_secret | length > 0
+          - espocrm_db_password is defined and espocrm_db_password | length > 0
+          - espocrm_admin_password is defined and espocrm_admin_password | length > 0
+        fail_msg: >
+          Missing vault variables. Ensure all required vars are set in vault.yml.
+          See playbook header for full list.
+
+    - name: Ensure stack directories exist
+      ansible.builtin.file:
+        path: "{{ stacks_root }}/{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+      loop: "{{ stack_dirs }}"
+
+    - name: Ensure shared Docker network exists
+      community.docker.docker_network:
+        name: "{{ docker_network }}"
+        state: present
+
+  tasks:
+    # ── n8n stack ─────────────────────────────────────────────────────────────
+    - name: Deploy postgres-n8n stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: postgres-n8n
+
+    - name: Wait for postgres-n8n to be ready
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 5433
+        delay: 5
+        timeout: 60
+        msg: "Timed out waiting for postgres-n8n on port 5433"
+
+    - name: Deploy n8n stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: n8n
+
+    # ── cal.com stack ─────────────────────────────────────────────────────────
+    - name: Deploy postgres-calcom stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: postgres-calcom
+
+    - name: Wait for postgres-calcom to be ready
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 5434
+        delay: 5
+        timeout: 60
+        msg: "Timed out waiting for postgres-calcom on port 5434"
+
+    - name: Deploy calcom stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: calcom
+
+    # ── EspoCRM stack ─────────────────────────────────────────────────────────
+    - name: Deploy postgres-espocrm stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: postgres-espocrm
+
+    - name: Wait for postgres-espocrm to be ready
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 5435
+        delay: 5
+        timeout: 60
+        msg: "Timed out waiting for postgres-espocrm on port 5435"
+
+    - name: Deploy espocrm stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: espocrm

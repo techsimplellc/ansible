@@ -1,0 +1,46 @@
+# Repo path: ~/git/ansible/playbooks/templates/n8n/docker-compose.yml.j2
+---
+# n8n — Workflow automation platform
+# Docs : https://docs.n8n.io/hosting/installation/docker/
+# Image: https://hub.docker.com/r/n8nio/n8n
+#
+# Internal LAN only — not exposed via cloudflared tunnel.
+# Access via: http://192.168.68.14:5678
+#
+# N8N_ENCRYPTION_KEY: generate with: openssl rand -hex 16
+
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n
+    restart: unless-stopped
+    environment:
+      # Database
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres-n8n
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: n8n
+      DB_POSTGRESDB_USER: n8n
+      DB_POSTGRESDB_PASSWORD: "{{ n8n_db_password }}"
+      # App
+      N8N_ENCRYPTION_KEY: "{{ n8n_encryption_key }}"
+      N8N_HOST: "0.0.0.0"
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      WEBHOOK_URL: "http://192.168.68.14:5678"
+      GENERIC_TIMEZONE: "America/New_York"
+      # Security
+      N8N_SECURE_COOKIE: "false"
+    volumes:
+      - n8n_data:/home/node/.n8n
+    ports:
+      - "5678:5678"
+    networks:
+      - proxy
+
+volumes:
+  n8n_data:
+
+networks:
+  proxy:
+    external: true

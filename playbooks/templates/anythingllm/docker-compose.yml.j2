@@ -1,0 +1,48 @@
+# Repo path: ~/git/ansible/playbooks/templates/anythingllm/docker-compose.yml.j2
+---
+# AnythingLLM — Self-hosted AI document chat and assistant
+# Docs : https://docs.anythingllm.com/installation/self-hosted/docker
+# Image: https://hub.docker.com/r/mintplexlabs/anythingllm
+#
+# Connects to Ollama on the same host via the proxy network.
+# Exposed via cloudflared tunnel through NPM on srv1.
+# NPM upstream: http://192.168.68.15:3001
+#
+# First-time setup: browse to the URL and complete the onboarding wizard.
+# When prompted for LLM provider, select Ollama and set URL: http://ollama:11434
+
+services:
+  anythingllm:
+    image: mintplexlabs/anythingllm:latest
+    container_name: anythingllm
+    restart: unless-stopped
+    environment:
+      # LLM — points to Ollama container on the same proxy network
+      LLM_PROVIDER: ollama
+      OLLAMA_BASE_PATH: "http://ollama:11434"
+      OLLAMA_MODEL_PREF: "llama3.2"
+      OLLAMA_MODEL_TOKEN_LIMIT: 4096
+      # Embedder — use Ollama for local embeddings
+      EMBEDDING_ENGINE: ollama
+      EMBEDDING_BASE_PATH: "http://ollama:11434"
+      EMBEDDING_MODEL_PREF: "nomic-embed-text"
+      EMBEDDING_MODEL_MAX_CHUNK_LENGTH: 8192
+      # Storage
+      STORAGE_DIR: /app/server/storage
+      # Auth
+      JWT_SECRET: "{{ anythingllm_jwt_secret }}"
+      # Disable telemetry
+      DISABLE_TELEMETRY: "true"
+    volumes:
+      - anythingllm_storage:/app/server/storage
+    ports:
+      - "3001:3001"     # Exposed for NPM proxy on srv1
+    networks:
+      - proxy
+
+volumes:
+  anythingllm_storage:
+
+networks:
+  proxy:
+    external: true

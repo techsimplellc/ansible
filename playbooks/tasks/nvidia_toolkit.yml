@@ -1,0 +1,55 @@
+# Repo path: ~/git/ansible/playbooks/tasks/nvidia_toolkit.yml
+---
+# nvidia_toolkit.yml — Install NVIDIA Container Toolkit for GPU passthrough in Docker
+# Docs: https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html
+#
+# Required on any host running GPU-accelerated Docker containers.
+# Safe to re-run — all tasks are idempotent.
+
+- name: Check if NVIDIA driver is loaded
+  ansible.builtin.command:
+    cmd: nvidia-smi
+  register: nvidia_smi
+  changed_when: false
+  failed_when: false
+
+- name: Assert NVIDIA driver is present
+  ansible.builtin.assert:
+    that:
+      - nvidia_smi.rc == 0
+    fail_msg: >
+      nvidia-smi failed — NVIDIA driver is not installed or not loaded on this host.
+      Install the driver before running this playbook.
+
+- name: Add NVIDIA Container Toolkit apt keyring
+  ansible.builtin.shell:
+    cmd: |
+      curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey \
+        | gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+    creates: /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+
+- name: Add NVIDIA Container Toolkit apt repository
+  ansible.builtin.shell:
+    cmd: |
+      curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list \
+        | sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' \
+        | tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+    creates: /etc/apt/sources.list.d/nvidia-container-toolkit.list
+
+- name: Install NVIDIA Container Toolkit
+  ansible.builtin.apt:
+    name: nvidia-container-toolkit
+    state: present
+    update_cache: true
+
+- name: Configure Docker to use NVIDIA runtime
+  ansible.builtin.command:
+    cmd: nvidia-ctk runtime configure --runtime=docker
+  register: nvidia_ctk
+  changed_when: true
+
+- name: Restart Docker to apply NVIDIA runtime
+  ansible.builtin.systemd:
+    name: docker
+    state: restarted
+  when: nvidia_ctk.changed

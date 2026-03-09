@@ -1,0 +1,47 @@
+# Repo path: ~/git/ansible/playbooks/templates/firefly/docker-compose.yml.j2
+---
+# Firefly III — Self-hosted personal finance manager
+# Docs : https://docs.firefly-iii.org/how-to/firefly-iii/installation/docker/
+# Image: https://hub.docker.com/r/fireflyiii/core
+#
+# APP_KEY must be exactly 32 characters.
+# Generate with: openssl rand -base64 32 | head -c 32
+#
+# Access via NPM proxy on srv1 — point proxy host to http://192.168.68.13:8080
+# First login: create an admin account at the URL above.
+
+services:
+  firefly:
+    image: fireflyiii/core:latest
+    container_name: firefly
+    restart: unless-stopped
+    environment:
+      # Database
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: firefly
+      DB_USERNAME: firefly
+      DB_PASSWORD: "{{ firefly_db_password }}"
+      # App
+      APP_KEY: "{{ firefly_app_key }}"
+      APP_URL: "https://firefly.{{ ansible_domain | default('example.com') }}"
+      APP_ENV: production
+      TRUSTED_PROXIES: "**"
+      # Mail (optional — disable by default)
+      MAIL_MAILER: log
+    volumes:
+      - firefly_upload:/var/www/html/storage/upload
+    expose:
+      - "8080"
+    ports:
+      - "8080:8080"     # Expose for NPM proxy on srv1 to reach
+    networks:
+      - proxy
+
+volumes:
+  firefly_upload:
+
+networks:
+  proxy:
+    external: true
