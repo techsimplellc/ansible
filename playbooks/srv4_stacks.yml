@@ -53,14 +53,8 @@
           Missing vault variables. Ensure all required vars are set in vault.yml.
           See playbook header for full list.
 
-    - name: Ensure stack directories exist
-      ansible.builtin.file:
-        path: "{{ stacks_root }}/{{ item }}"
-        state: directory
-        owner: root
-        group: root
-        mode: "0755"
-      loop: "{{ stack_dirs }}"
+    - name: Enforce /opt/stacks ownership
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/stacks_owner.yml"
 
     - name: Ensure shared Docker network exists
       community.docker.docker_network:

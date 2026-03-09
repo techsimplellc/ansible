@@ -44,14 +44,8 @@
           - anythingllm_jwt_secret is defined and anythingllm_jwt_secret | length > 0
         fail_msg: "anythingllm_jwt_secret missing — add it to vault.yml"
 
-    - name: Ensure stack directories exist
-      ansible.builtin.file:
-        path: "{{ stacks_root }}/{{ item }}"
-        state: directory
-        owner: root
-        group: root
-        mode: "0755"
-      loop: "{{ stack_dirs }}"
+    - name: Enforce /opt/stacks ownership
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/stacks_owner.yml"
 
     - name: Ensure partition mount point exists
       ansible.builtin.file:
