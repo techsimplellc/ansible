@@ -1,0 +1,37 @@
+# Repo path: ~/git/ansible/playbooks/templates/paperless-gpt/docker-compose.yml.j2
+---
+# Paperless-GPT — LLM-powered title/tag suggestions for Paperless-ngx
+# Docs : https://github.com/icereed/paperless-gpt
+# Image: https://hub.docker.com/r/icereed/paperless-gpt
+#
+# Connects to:
+#   - Paperless-ngx API on same host: http://paperless:8000
+#   - Ollama on srv5: http://192.168.68.15:11434
+#
+# Internal LAN only — not exposed externally.
+# Processes documents tagged with the auto_tag (default: paperless-gpt) in Paperless-ngx.
+# Add that tag to a document to trigger LLM title/tag generation.
+
+services:
+  paperless-gpt:
+    image: icereed/paperless-gpt:latest
+    container_name: paperless-gpt
+    restart: unless-stopped
+    environment:
+      # Paperless-ngx connection
+      PAPERLESS_BASE_URL: "http://paperless:8000"
+      PAPERLESS_API_TOKEN: "{{ paperless_api_token }}"           # Same token as paperless-ai
+                                        # Generate in Paperless-ngx UI after first run
+      # Ollama connection
+      LLM_PROVIDER: ollama
+      OLLAMA_HOST: "{{ ollama_url }}"
+      LLM_MODEL: "llama3.2"
+      # Processing
+      AUTO_TAG: "paperless-gpt"         # Tag this in Paperless-ngx to trigger processing
+      LLM_LANGUAGE: "English"
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    external: true

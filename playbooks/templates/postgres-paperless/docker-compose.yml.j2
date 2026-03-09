@@ -1,0 +1,32 @@
+# Repo path: ~/git/ansible/playbooks/templates/postgres-paperless/docker-compose.yml.j2
+---
+# PostgreSQL — Dedicated instance for Paperless-ngx
+# Docs: https://hub.docker.com/_/postgres
+
+services:
+  postgres-paperless:
+    image: postgres:16-alpine
+    container_name: postgres-paperless
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: paperless
+      POSTGRES_PASSWORD: "{{ paperless_db_password }}"
+      POSTGRES_DB: paperless
+    volumes:
+      - postgres_paperless_data:/var/lib/postgresql/data
+    ports:
+      - "5437:5432"
+    networks:
+      - proxy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U paperless -d paperless"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_paperless_data:
+
+networks:
+  proxy:
+    external: true

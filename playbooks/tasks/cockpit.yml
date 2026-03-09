@@ -1,0 +1,34 @@
+# Repo path: ~/git/ansible/playbooks/tasks/cockpit.yml
+---
+# cockpit.yml — Install and configure Cockpit web console on srv6
+# Docs: https://cockpit-project.org/running.html
+#
+# Cockpit runs as a native systemd service — not in Docker.
+# Access: https://192.168.68.16:9090
+#
+# Authentication uses PAM — log in with any system user that has sudo privileges.
+# Internal LAN only — not exposed via cloudflared tunnel.
+
+- name: Ensure Cockpit is installed
+  ansible.builtin.apt:
+    name:
+      - cockpit
+      - cockpit-storaged       # Disk/storage management
+      - cockpit-networkmanager # Network management
+      - cockpit-packagekit     # Package updates via UI
+    state: present
+    update_cache: true
+
+- name: Enable and start Cockpit socket
+  ansible.builtin.systemd:
+    name: cockpit.socket
+    state: started
+    enabled: true
+
+- name: Open UFW port 9090 for Cockpit — LAN only
+  community.general.ufw:
+    rule: allow
+    port: "9090"
+    proto: tcp
+    src: "192.168.68.0/24"
+    comment: "Cockpit web console — LAN only"

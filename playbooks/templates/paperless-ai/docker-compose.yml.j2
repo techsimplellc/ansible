@@ -1,0 +1,43 @@
+# Repo path: ~/git/ansible/playbooks/templates/paperless-ai/docker-compose.yml.j2
+---
+# Paperless-AI — AI-powered document classification for Paperless-ngx
+# Docs : https://github.com/clusterzx/paperless-ai
+# Image: https://hub.docker.com/r/clusterzx/paperless-ai
+#
+# Connects to:
+#   - Paperless-ngx API on same host: http://paperless:8000
+#   - Ollama on srv5: http://192.168.68.15:11434
+#
+# Internal LAN only — not exposed externally.
+# Admin UI available at http://192.168.68.16:8087
+
+services:
+  paperless-ai:
+    image: clusterzx/paperless-ai:latest
+    container_name: paperless-ai
+    restart: unless-stopped
+    environment:
+      # Paperless-ngx connection
+      PAPERLESS_API_URL: "http://paperless:8000/api"
+      PAPERLESS_API_TOKEN: "{{ paperless_api_token }}"           # Generate in Paperless-ngx UI after first run
+                                        # Profile → API Auth Tokens → Add Token
+      # Ollama connection
+      AI_PROVIDER: ollama
+      OLLAMA_API_URL: "{{ ollama_url }}"
+      OLLAMA_MODEL: "llama3.2"
+      # Processing
+      PROCESS_PREDEFINED_DOCUMENTS: "yes"
+      SCAN_INTERVAL: "30"               # Minutes between scans
+    volumes:
+      - paperless_ai_data:/app/data
+    ports:
+      - "8087:8000"     # Admin UI — LAN access only
+    networks:
+      - proxy
+
+volumes:
+  paperless_ai_data:
+
+networks:
+  proxy:
+    external: true

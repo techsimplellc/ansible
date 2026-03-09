@@ -1,0 +1,126 @@
+# Repo path: ~/git/ansible/playbooks/tasks/nfs_server.yml
+---
+# nfs_server.yml — Configure srv6 as an NFSv4 server
+# Exports a per-host subdirectory under /mnt/storage to each NFS client.
+#
+# Export path pattern : /mnt/storage/<hostname>
+# Client mount target : 192.168.68.16:/<hostname>  (NFSv4 pseudo-root)
+# NFS clients         : srv1, srv3, srv4, srv5
+#
+# Docs: https://ubuntu.com/server/docs/service-nfs
+
+- name: Install NFS server packages
+  ansible.builtin.apt:
+    name:
+      - nfs-kernel-server
+      - nfs-common
+    state: present
+    update_cache: true
+
+- name: Ensure per-host export directories exist on /mnt/storage
+  ansible.builtin.file:
+    path: "/mnt/storage/{{ item }}"
+    state: directory
+    owner: root
+    group: docker-admin
+    mode: "0775"
+  loop:
+    - srv1
+    - srv3
+    - srv4
+    - srv5
+
+- name: Ensure stacks subdirectory exists in each per-host export
+  ansible.builtin.file:
+    path: "/mnt/storage/{{ item }}/stacks"
+    state: directory
+    owner: root
+    group: docker-admin
+    mode: "0775"
+  loop:
+    - srv1
+    - srv3
+    - srv4
+    - srv5
+
+- name: Deploy /etc/exports for NFSv4
+  ansible.builtin.copy:
+    dest: /etc/exports
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # NFSv4 exports — srv6 (192.168.68.16)
+      # Per-host subdirectories exported to each LAN server
+      # Docs: https://manpages.ubuntu.com/manpages/noble/man5/exports.5.html
+
+      /mnt/storage/srv1  192.168.68.11(rw,sync,no_subtree_check,no_root_squash,fsid=1)
+      /mnt/storage/srv3  192.168.68.13(rw,sync,no_subtree_check,no_root_squash,fsid=3)
+      /mnt/storage/srv4  192.168.68.14(rw,sync,no_subtree_check,no_root_squash,fsid=4)
+      /mnt/storage/srv5  192.168.68.15(rw,sync,no_subtree_check,no_root_squash,fsid=5)
+  register: exports_file
+
+- name: Reload NFS exports
+  ansible.builtin.command: exportfs -ra
+  when: exports_file.changed
+
+- name: Enable and start NFS server
+  ansible.builtin.systemd:
+    name: nfs-kernel-server
+    state: started
+    enabled: true
+
+- name: Open UFW port 2049 TCP for NFSv4 — LAN only
+  community.general.ufw:
+    rule: allow
+    port: "2049"
+    proto: tcp
+    src: "192.168.68.0/24"
+    comment: "NFSv4 — LAN only"
+
+- name: Create /opt/stacks symlink on srv6 pointing to /mnt/storage/srv6/stacks
+  ansible.builtin.file:
+    path: /mnt/storage/srv6
+    state: directory
+    owner: root
+    group: docker-admin
+    mode: "0775"
+
+- name: Ensure /mnt/storage/srv6/stacks exists
+  ansible.builtin.file:
+    path: /mnt/storage/srv6/stacks
+    state: directory
+    owner: root
+    group: docker-admin
+    mode: "0775"
+
+- name: Migrate existing /opt/stacks data to /mnt/storage/srv6/stacks if needed
+  ansible.builtin.shell: |
+    if [ -d /opt/stacks ] && [ ! -L /opt/stacks ]; then
+      cp -a /opt/stacks/. /mnt/storage/srv6/stacks/
+    fi
+  args:
+    executable: /bin/bash
+
+- name: Remove existing /opt/stacks directory on srv6 (replace with symlink)
+  ansible.builtin.file:
+    path: /opt/stacks
+    state: absent
+  when: not (ansible_facts['stat'] is defined and ansible_facts['stat'].islnk | default(false))
+
+- name: Create /opt/stacks symlink on srv6
+  ansible.builtin.file:
+    src: /mnt/storage/srv6/stacks
+    dest: /opt/stacks
+    state: link
+    owner: root
+    group: docker-admin
+
+- name: Enforce ownership on /mnt/storage/srv6/stacks
+  ansible.builtin.file:
+    path: /mnt/storage/srv6/stacks
+    state: directory
+    owner: root
+    group: docker-admin
+    mode: "0775"
+    recurse: true

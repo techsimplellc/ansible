@@ -1,0 +1,11 @@
+# Repo path: ~/git/ansible/playbooks/tasks/stacks_permissions.yml
+---
+- name: Ensure /opt/stacks is owned by root:docker-admin
+  ansible.builtin.file:
+    path: /opt/stacks
+    state: directory
+    owner: root
+    group: docker-admin
+    mode: "0775"
+    recurse: true
+

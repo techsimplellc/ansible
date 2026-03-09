@@ -1,0 +1,76 @@
+# Repo path: ~/git/ansible/playbooks/tasks/nfs_client.yml
+---
+# nfs_client.yml — Mount NFSv4 share from srv6 and replace /opt/stacks with symlink
+#
+# Called from each client server playbook (srv1, srv3, srv4, srv5).
+# Uses ansible_hostname (short) to determine which export to mount.
+#
+# Mount path  : /mnt/storage  → 192.168.68.16:/<hostname>
+# Symlink     : /opt/stacks   → /mnt/storage/stacks
+#
+# Prerequisites:
+#   - srv6 nfs_server.yml must have run first
+#   - /mnt/storage/<hostname>/stacks must exist on srv6
+
+- name: Install NFS client packages
+  ansible.builtin.apt:
+    name: nfs-common
+    state: present
+    update_cache: true
+
+- name: Ensure /mnt/storage mount point exists
+  ansible.builtin.file:
+    path: /mnt/storage
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Migrate existing /opt/stacks data to NFS share before mounting
+  ansible.builtin.shell: |
+    if [ -d /opt/stacks ] && [ ! -L /opt/stacks ]; then
+      # Temporarily mount the NFS share to a staging path for migration
+      mkdir -p /mnt/storage_staging
+      mount -t nfs4 -o rw,sync,hard,intr 192.168.68.16:/mnt/storage/{{ ansible_hostname }} /mnt/storage_staging
+      cp -a /opt/stacks/. /mnt/storage_staging/stacks/
+      umount /mnt/storage_staging
+      rmdir /mnt/storage_staging
+    fi
+  args:
+    executable: /bin/bash
+  register: migration_result
+  changed_when: migration_result.rc == 0
+
+- name: Remove existing /opt/stacks directory (replace with symlink)
+  ansible.builtin.file:
+    path: /opt/stacks
+    state: absent
+
+- name: Mount NFSv4 share from srv6 at /mnt/storage
+  ansible.posix.mount:
+    src: "192.168.68.16:/mnt/storage/{{ ansible_hostname }}"
+    path: /mnt/storage
+    fstype: nfs4
+    opts: rw,sync,hard,intr,nfsvers=4
+    state: mounted        # Mounts now and adds to /etc/fstab
+
+- name: Enforce ownership on /mnt/storage/stacks
+  ansible.builtin.file:
+    path: /mnt/storage/stacks
+    state: directory
+    owner: root
+    group: docker-admin
+    mode: "0775"
+    recurse: true
+
+- name: Create /opt/stacks symlink pointing to /mnt/storage/stacks
+  ansible.builtin.file:
+    src: /mnt/storage/stacks
+    dest: /opt/stacks
+    state: link
+
+- name: Verify NFS mount is active
+  ansible.builtin.command: mountpoint -q /mnt/storage
+  register: mountpoint_check
+  changed_when: false
+  failed_when: mountpoint_check.rc != 0

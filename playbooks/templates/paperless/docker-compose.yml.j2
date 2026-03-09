@@ -1,0 +1,74 @@
+# Repo path: ~/git/ansible/playbooks/templates/paperless/docker-compose.yml.j2
+---
+# Paperless-ngx — Self-hosted document management system
+# Docs : https://docs.paperless-ngx.com/setup/#docker
+# Image: https://hub.docker.com/r/paperlessngx/paperless-ngx
+#
+# Exposed via cloudflared tunnel through NPM on srv1.
+# NPM upstream: http://192.168.68.16:8086
+#
+# PAPERLESS_SECRET_KEY: generate with: openssl rand -hex 32
+# First login: admin / set via PAPERLESS_ADMIN_PASSWORD
+#
+# Consume directory: /opt/stacks/paperless/consume
+#   Drop documents here for automatic ingestion.
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: paperless-redis
+    restart: unless-stopped
+    volumes:
+      - paperless_redis_data:/data
+    networks:
+      - proxy
+
+  paperless:
+    image: paperlessngx/paperless-ngx:latest
+    container_name: paperless
+    restart: unless-stopped
+    depends_on:
+      - redis
+    environment:
+      # Database
+      PAPERLESS_DBENGINE: postgresql
+      PAPERLESS_DBHOST: postgres-paperless
+      PAPERLESS_DBPORT: 5432
+      PAPERLESS_DBNAME: paperless
+      PAPERLESS_DBUSER: paperless
+      PAPERLESS_DBPASS: "{{ paperless_db_password }}"
+      # Redis
+      PAPERLESS_REDIS: redis://paperless-redis:6379
+      # App
+      PAPERLESS_SECRET_KEY: "{{ paperless_secret_key }}"
+      PAPERLESS_URL: "https://paperless.{{ ansible_domain | default('example.com') }}"
+      PAPERLESS_ALLOWED_HOSTS: "*"
+      PAPERLESS_CORS_ALLOWED_HOSTS: "https://paperless.{{ ansible_domain | default('example.com') }}"
+      PAPERLESS_ADMIN_USER: admin
+      PAPERLESS_ADMIN_PASSWORD: "{{ paperless_admin_password }}"
+      PAPERLESS_ADMIN_MAIL: "admin@{{ ansible_domain | default('example.com') }}"
+      # Storage
+      PAPERLESS_CONSUMPTION_DIR: /usr/src/paperless/consume
+      PAPERLESS_MEDIA_ROOT: /usr/src/paperless/media
+      PAPERLESS_DATA_DIR: /usr/src/paperless/data
+      PAPERLESS_EXPORT_DIR: /usr/src/paperless/export
+      # OCR
+      PAPERLESS_OCR_LANGUAGE: eng
+      PAPERLESS_OCR_MODE: skip
+      PAPERLESS_TIME_ZONE: "America/New_York"
+    volumes:
+      - "{{ stacks_root }}/paperless/consume:/usr/src/paperless/consume"
+      - "{{ stacks_root }}/paperless/media:/usr/src/paperless/media"
+      - "{{ stacks_root }}/paperless/data:/usr/src/paperless/data"
+      - "{{ stacks_root }}/paperless/export:/usr/src/paperless/export"
+    ports:
+      - "8086:8000"     # Exposed for NPM proxy on srv1
+    networks:
+      - proxy
+
+volumes:
+  paperless_redis_data:
+
+networks:
+  proxy:
+    external: true

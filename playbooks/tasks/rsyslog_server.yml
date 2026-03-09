@@ -1,0 +1,82 @@
+# Repo path: ~/git/ansible/playbooks/tasks/rsyslog_server.yml
+---
+# rsyslog_server.yml — Configure srv6 as a central rsyslog receiver
+# Docs: https://www.rsyslog.com/doc/master/configuration/modules/imtcp.html
+#
+# Listens on:
+#   514/tcp  — reliable TCP syslog ingestion
+#   514/udp  — legacy UDP syslog ingestion
+#
+# Logs from all LAN hosts are written to:
+#   /var/log/remote/<hostname>/<program>.log
+#
+# rsyslog runs as a native systemd service — not in Docker.
+# Port 514 requires root or CAP_NET_BIND_SERVICE; systemd service handles this.
+
+- name: Ensure rsyslog is installed
+  ansible.builtin.apt:
+    name: rsyslog
+    state: present
+    update_cache: true
+
+- name: Deploy rsyslog server configuration
+  ansible.builtin.copy:
+    dest: /etc/rsyslog.d/10-server.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # Central rsyslog receiver — srv6 (192.168.68.16)
+      # Receives syslog from all LAN hosts on TCP/UDP 514
+
+      # Load TCP and UDP input modules
+      module(load="imtcp")
+      module(load="imudp")
+
+      # Listen on TCP 514
+      input(type="imtcp" port="514")
+
+      # Listen on UDP 514
+      input(type="imudp" port="514")
+
+      # Write remote logs to /var/log/remote/<hostname>/<program>.log
+      template(name="RemoteLogs" type="string"
+               string="/var/log/remote/%HOSTNAME%/%PROGRAMNAME%.log")
+
+      # Apply template to all messages arriving from remote hosts
+      if $fromhost-ip != "127.0.0.1" then {
+          action(type="omfile" dynaFile="RemoteLogs")
+          stop
+      }
+  register: rsyslog_conf
+
+- name: Ensure /var/log/remote directory exists
+  ansible.builtin.file:
+    path: /var/log/remote
+    state: directory
+    owner: syslog
+    group: adm
+    mode: "0750"
+
+- name: Open UFW port 514 TCP for syslog ingestion
+  community.general.ufw:
+    rule: allow
+    port: "514"
+    proto: tcp
+    src: "192.168.68.0/24"
+    comment: "rsyslog TCP ingestion from LAN"
+
+- name: Open UFW port 514 UDP for syslog ingestion
+  community.general.ufw:
+    rule: allow
+    port: "514"
+    proto: udp
+    src: "192.168.68.0/24"
+    comment: "rsyslog UDP ingestion from LAN"
+
+- name: Restart rsyslog to apply configuration
+  ansible.builtin.systemd:
+    name: rsyslog
+    state: restarted
+    enabled: true
+  when: rsyslog_conf.changed

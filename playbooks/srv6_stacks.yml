@@ -1,0 +1,176 @@
+# Repo path: ~/git/ansible/playbooks/srv6_stacks.yml
+---
+# =============================================================================
+# srv6_stacks.yml — Deploy Docker Compose stacks to srv6 (192.168.68.16)
+# Docs:
+#   OnlyOffice CE   : https://helpcenter.onlyoffice.com/installation/docs-community-docker.aspx
+#   FileBrowser Q   : https://github.com/gtsteffaniak/filebrowser
+#   Paperless-ngx   : https://docs.paperless-ngx.com/setup/#docker
+#   Paperless-AI    : https://github.com/clusterzx/paperless-ai
+#   Paperless-GPT   : https://github.com/icereed/paperless-gpt
+#   rsyslog         : https://www.rsyslog.com/
+#   Cockpit         : https://cockpit-project.org/
+#
+# Exposed via cloudflared tunnel through NPM on srv1:
+#   OnlyOffice      NPM upstream: http://192.168.68.16:8084
+#   FileBrowser Q   NPM upstream: http://192.168.68.16:8085
+#   Paperless-ngx   NPM upstream: http://192.168.68.16:8086
+#
+# Internal LAN only:
+#   rsyslog         514/tcp 514/udp (syslog receiver)
+#   Cockpit         9090/tcp
+#
+# LLM backend: Ollama on srv5 (192.168.68.15:11434)
+#
+# Vault requirements (ansible-vault edit group_vars/all/vault.yml):
+#   onlyoffice_db_password      : "YOUR_PASSWORD"
+#   onlyoffice_jwt_secret       : "YOUR_SECRET"      # openssl rand -hex 32
+#   paperless_db_password       : "YOUR_PASSWORD"
+#   paperless_secret_key        : "YOUR_SECRET"      # openssl rand -hex 32
+#   paperless_admin_password    : "YOUR_PASSWORD"
+#   filebrowser_admin_password  : "YOUR_PASSWORD"
+#
+# Run:
+#   ansible-playbook playbooks/srv6_stacks.yml -i inventory.yml --limit srv6 --ask-vault-pass --become
+# =============================================================================
+
+- name: Deploy Docker Compose stacks to srv6
+  hosts: srv6
+  become: true
+  gather_facts: true
+
+  vars:
+    stacks_root: /opt/stacks
+    docker_network: proxy
+    ollama_url: "http://192.168.68.15:11434"
+    stack_dirs:
+      - postgres-onlyoffice
+      - postgres-paperless
+      - onlyoffice
+      - filebrowser
+      - paperless
+      - paperless-ai
+      - paperless-gpt
+
+  pre_tasks:
+    - name: Configure NFS server and local /opt/stacks symlink
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/nfs_server.yml"
+
+    - name: Enforce /opt/stacks ownership
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/stacks_permissions.yml"
+
+    - name: Assert required vault variables are present
+      ansible.builtin.assert:
+        that:
+          - onlyoffice_db_password is defined and onlyoffice_db_password | length > 0
+          - onlyoffice_jwt_secret is defined and onlyoffice_jwt_secret | length > 0
+          - paperless_db_password is defined and paperless_db_password | length > 0
+          - paperless_secret_key is defined and paperless_secret_key | length > 0
+          - paperless_admin_password is defined and paperless_admin_password | length > 0
+          - filebrowser_admin_password is defined and filebrowser_admin_password | length > 0
+        fail_msg: >
+          Missing vault variables. See playbook header for full list.
+
+    - name: Ensure stack directories exist
+      ansible.builtin.file:
+        path: "{{ stacks_root }}/{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+      loop: "{{ stack_dirs }}"
+
+    - name: Ensure Paperless consume and media directories exist
+      ansible.builtin.file:
+        path: "{{ stacks_root }}/paperless/{{ item }}"
+        state: directory
+        owner: 1000
+        group: 1000
+        mode: "0755"
+      loop:
+        - consume
+        - media
+        - export
+        - data
+
+    - name: Ensure FileBrowser data directory exists
+      ansible.builtin.file:
+        path: "{{ stacks_root }}/filebrowser/data"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Ensure shared Docker network exists
+      community.docker.docker_network:
+        name: "{{ docker_network }}"
+        state: present
+
+    - name: Install and configure rsyslog server
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/rsyslog_server.yml"
+
+    - name: Install and configure Cockpit
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/cockpit.yml"
+
+  tasks:
+    # ── OnlyOffice stack ──────────────────────────────────────────────────────
+    - name: Deploy postgres-onlyoffice stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: postgres-onlyoffice
+
+    - name: Wait for postgres-onlyoffice to be ready
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 5436
+        delay: 5
+        timeout: 60
+        msg: "Timed out waiting for postgres-onlyoffice on port 5436"
+
+    - name: Deploy onlyoffice stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: onlyoffice
+
+    # ── FileBrowser Quantum stack ─────────────────────────────────────────────
+    - name: Deploy filebrowser stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: filebrowser
+
+    # ── Paperless stack ───────────────────────────────────────────────────────
+    - name: Deploy postgres-paperless stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: postgres-paperless
+
+    - name: Wait for postgres-paperless to be ready
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 5437
+        delay: 5
+        timeout: 60
+        msg: "Timed out waiting for postgres-paperless on port 5437"
+
+    - name: Deploy paperless stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: paperless
+
+    - name: Wait for Paperless-ngx to be ready
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 8086
+        delay: 10
+        timeout: 120
+        msg: "Timed out waiting for Paperless-ngx on port 8086"
+
+    - name: Deploy paperless-ai stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: paperless-ai
+
+    - name: Deploy paperless-gpt stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: paperless-gpt
