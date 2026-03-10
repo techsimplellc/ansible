@@ -1,6 +1,6 @@
 # Repo path: ~/git/ansible/playbooks/tasks/rsyslog_server.yml
 ---
-# rsyslog_server.yml — Configure srv6 as a central rsyslog receiver
+# rsyslog_server.yml — Configure srv6 as the central rsyslog receiver
 # Docs: https://www.rsyslog.com/doc/master/configuration/modules/imtcp.html
 #
 # Listens on:
@@ -8,10 +8,11 @@
 #   514/udp  — legacy UDP syslog ingestion
 #
 # Logs from all LAN hosts are written to:
-#   /var/log/remote/<hostname>/<program>.log
+#   /mnt/storage/syslog/<hostname>/<program>.log
 #
-# rsyslog runs as a native systemd service — not in Docker.
-# Port 514 requires root or CAP_NET_BIND_SERVICE; systemd service handles this.
+# AppArmor local override is required — the default rsyslogd profile only
+# permits writes to /var/log/**. The override adds /mnt/storage/syslog/**.
+# Docs: https://gitlab.com/apparmor/apparmor/-/wikis/Profiling_by_hand#local-overrides
 
 - name: Ensure rsyslog is installed
   ansible.builtin.apt:
@@ -19,7 +20,41 @@
     state: present
     update_cache: true
 
-- name: Deploy rsyslog server configuration
+- name: Ensure syslog storage directory exists on NFS volume
+  ansible.builtin.file:
+    path: /mnt/storage/syslog
+    state: directory
+    owner: syslog
+    group: adm
+    mode: "0750"
+
+- name: Deploy AppArmor local override for rsyslogd
+  ansible.builtin.copy:
+    dest: /etc/apparmor.d/local/usr.sbin.rsyslogd
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # Local AppArmor override for rsyslogd — srv6
+      # Allows rsyslogd to write logs to the LVM XFS storage volume
+      # This file is included by /etc/apparmor.d/usr.sbin.rsyslogd
+      /mnt/storage/syslog/  rw,
+      /mnt/storage/syslog/** rwk,
+  register: apparmor_override
+
+- name: Ensure /etc/apparmor.d/usr.sbin.rsyslogd includes local override
+  ansible.builtin.lineinfile:
+    path: /etc/apparmor.d/usr.sbin.rsyslogd
+    regexp: '^.*#include <local/usr\.sbin\.rsyslogd>'
+    line: '  #include <local/usr.sbin.rsyslogd>'
+    state: present
+  register: apparmor_profile
+
+- name: Reload AppArmor profile for rsyslogd
+  ansible.builtin.command: apparmor_parser -r /etc/apparmor.d/usr.sbin.rsyslogd
+  when: apparmor_override.changed or apparmor_profile.changed
+
+- name: Deploy rsyslog central receiver configuration
   ansible.builtin.copy:
     dest: /etc/rsyslog.d/10-server.conf
     owner: root
@@ -28,35 +63,32 @@
     content: |
       # Central rsyslog receiver — srv6 (192.168.68.16)
       # Receives syslog from all LAN hosts on TCP/UDP 514
+      # Docs: https://www.rsyslog.com/doc/master/configuration/modules/imtcp.html
 
       # Load TCP and UDP input modules
       module(load="imtcp")
       module(load="imudp")
 
-      # Listen on TCP 514
+      # Listen on TCP 514 — reliable delivery
       input(type="imtcp" port="514")
 
-      # Listen on UDP 514
+      # Listen on UDP 514 — legacy compatibility
       input(type="imudp" port="514")
 
-      # Write remote logs to /var/log/remote/<hostname>/<program>.log
+      # Write remote logs to /mnt/storage/syslog/<hostname>/<program>.log
       template(name="RemoteLogs" type="string"
-               string="/var/log/remote/%HOSTNAME%/%PROGRAMNAME%.log")
+               string="/mnt/storage/syslog/%HOSTNAME%/%PROGRAMNAME%.log")
 
-      # Apply template to all messages arriving from remote hosts
+      # Route all messages from remote hosts to NFS-backed storage
+      # Local loopback traffic is excluded and handled by default rules
       if $fromhost-ip != "127.0.0.1" then {
-          action(type="omfile" dynaFile="RemoteLogs")
+          action(type="omfile" dynaFile="RemoteLogs"
+                 dirCreateMode="0750" fileCreateMode="0640"
+                 dirOwner="syslog" dirGroup="adm"
+                 fileOwner="syslog" fileGroup="adm")
           stop
       }
   register: rsyslog_conf
-
-- name: Ensure /var/log/remote directory exists
-  ansible.builtin.file:
-    path: /var/log/remote
-    state: directory
-    owner: syslog
-    group: adm
-    mode: "0750"
 
 - name: Open UFW port 514 TCP for syslog ingestion
   community.general.ufw:
@@ -74,9 +106,14 @@
     src: "192.168.68.0/24"
     comment: "rsyslog UDP ingestion from LAN"
 
-- name: Restart rsyslog to apply configuration
+- name: Ensure rsyslog is enabled and started
+  ansible.builtin.systemd:
+    name: rsyslog
+    enabled: true
+    state: started
+
+- name: Restart rsyslog to apply new configuration
   ansible.builtin.systemd:
     name: rsyslog
     state: restarted
-    enabled: true
-  when: rsyslog_conf.changed
+  when: rsyslog_conf.changed or apparmor_override.changed or apparmor_profile.changed

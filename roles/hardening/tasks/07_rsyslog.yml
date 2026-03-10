@@ -1,3 +1,4 @@
+# Repo path: ~/git/ansible/roles/hardening/tasks/07_rsyslog.yml
 ---
 - name: Install rsyslog
   ansible.builtin.apt:
@@ -39,6 +40,25 @@
     owner: root
     group: adm
     mode: "0640"
+
+# Deploy forwarding rule to all hosts except srv6 (the central receiver itself)
+# Docs: https://www.rsyslog.com/doc/master/configuration/modules/omfwd.html
+- name: Deploy rsyslog forwarding config to srv6
+  ansible.builtin.copy:
+    src: 10-forward-to-srv6.conf
+    dest: /etc/rsyslog.d/10-forward-to-srv6.conf
+    owner: root
+    group: root
+    mode: "0644"
+  when: inventory_hostname != 'srv6'
+  notify: Restart rsyslog
+
+- name: Remove forwarding config on srv6 (receiver does not forward to itself)
+  ansible.builtin.file:
+    path: /etc/rsyslog.d/10-forward-to-srv6.conf
+    state: absent
+  when: inventory_hostname == 'srv6'
+  notify: Restart rsyslog
 
 - name: Enable and start rsyslog
   ansible.builtin.systemd:
