@@ -28,7 +28,7 @@ services:
       ONLYOFFICE_JWT_SECRET: "{{ onlyoffice_jwt_secret }}"
     volumes:
       - "{{ stacks_root }}/filebrowser/data:/data"
-      - /opt/files:/srv                             # Shared file storage root
+      - /mnt/storage/users:/srv                             # Shared file storage root
     ports:
       - "8085:80"       # Exposed for NPM proxy on srv1
     networks:
