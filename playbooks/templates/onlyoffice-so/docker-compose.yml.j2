@@ -1,0 +1,52 @@
+# Repo path: ~/git/ansible/playbooks/templates/onlyoffice-so/docker-compose.yml.j2
+---
+# OnlyOffice Document Server — Dedicated instance for Simple Office
+# Docs : https://helpcenter.onlyoffice.com/installation/docs-community-docker.aspx
+# Image: https://hub.docker.com/r/onlyoffice/documentserver
+#
+# INTERNAL LAN ONLY — NOT exposed via cloudflared tunnel or NPM.
+# The Simple Office API communicates with this container via the
+# internal Docker proxy network using the container name: onlyoffice-so
+# API internal URL: http://onlyoffice-so:80
+#
+# Port 8092 bound to host for LAN access during development.
+# Remove the ports binding in production once API-only access is confirmed.
+#
+# JWT secret (so_onlyoffice_jwt_secret) MUST match the value set in
+# simple-office-api's ONLYOFFICE_JWT_SECRET environment variable.
+# These are intentionally separate from the CE instance JWT secret.
+# Generate with: openssl rand -hex 32
+
+services:
+  onlyoffice-so:
+    image: onlyoffice/documentserver:latest
+    container_name: onlyoffice-so
+    restart: unless-stopped
+    environment:
+      DB_TYPE: postgres
+      DB_HOST: postgres-simple-office
+      DB_PORT: 5432
+      DB_NAME: onlyoffice_so
+      DB_USER: simpleoffice
+      DB_PWD: "{{ so_db_password }}"
+      JWT_ENABLED: "true"
+      JWT_SECRET: "{{ so_onlyoffice_jwt_secret }}"
+      JWT_HEADER: Authorization
+      JWT_IN_BODY: "true"
+    volumes:
+      - onlyoffice_so_data:/var/www/onlyoffice/Data
+      - onlyoffice_so_logs:/var/log/onlyoffice
+      - onlyoffice_so_cache:/var/lib/onlyoffice/documentserver/App_Data/cache/files
+    ports:
+      - "8092:80"       # LAN dev access — restrict to internal only in prod
+    networks:
+      - proxy
+
+volumes:
+  onlyoffice_so_data:
+  onlyoffice_so_logs:
+  onlyoffice_so_cache:
+
+networks:
+  proxy:
+    external: true

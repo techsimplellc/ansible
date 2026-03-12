@@ -1,0 +1,41 @@
+# Repo path: ~/git/ansible/playbooks/templates/postgres-simple-office/docker-compose.yml.j2
+---
+# PostgreSQL — Dedicated instance for Simple Office
+# Docs: https://hub.docker.com/_/postgres
+#
+# Port 5438 — does not conflict with:
+#   5436 (postgres-onlyoffice)
+#   5437 (postgres-paperless)
+#   5439 (postgres-authentik)
+#
+# RLS (Row-Level Security) is enabled at the application layer by the
+# Simple Office API on first migration. Do not disable pg_stat_statements
+# or alter the default role — the app relies on SET LOCAL for tenant context.
+
+services:
+  postgres-simple-office:
+    image: postgres:16-alpine
+    container_name: postgres-simple-office
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: simpleoffice
+      POSTGRES_PASSWORD: "{{ so_db_password }}"
+      POSTGRES_DB: simpleoffice
+    volumes:
+      - postgres_simple_office_data:/var/lib/postgresql/data
+    ports:
+      - "5438:5432"
+    networks:
+      - proxy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U simpleoffice -d simpleoffice"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_simple_office_data:
+
+networks:
+  proxy:
+    external: true

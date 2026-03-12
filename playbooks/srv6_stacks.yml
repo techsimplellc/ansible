@@ -3,32 +3,52 @@
 # =============================================================================
 # srv6_stacks.yml — Deploy Docker Compose stacks to srv6 (192.168.68.16)
 # Docs:
-#   OnlyOffice CE   : https://helpcenter.onlyoffice.com/installation/docs-community-docker.aspx
-#   FileBrowser Q   : https://github.com/gtsteffaniak/filebrowser
 #   Paperless-ngx   : https://docs.paperless-ngx.com/setup/#docker
 #   Paperless-AI    : https://github.com/clusterzx/paperless-ai
 #   Paperless-GPT   : https://github.com/icereed/paperless-gpt
 #   rsyslog         : https://www.rsyslog.com/
 #   Cockpit         : https://cockpit-project.org/
+#   Simple Office   : (internal — custom Node.js/React + OnlyOffice SaaS platform)
+#   Authentik       : https://docs.goauthentik.io/docs/install-config/install/docker-compose
 #
 # Exposed via cloudflared tunnel through NPM on srv1:
-#   OnlyOffice      NPM upstream: http://192.168.68.16:8084
-#   FileBrowser Q   NPM upstream: http://192.168.68.16:8085
 #   Paperless-ngx   NPM upstream: http://192.168.68.16:8086
+#   Authentik       NPM upstream: http://192.168.68.16:9000
+#   SO API          NPM upstream: http://192.168.68.16:8090
+#   SO Web          NPM upstream: http://192.168.68.16:8091
 #
 # Internal LAN only:
 #   rsyslog         514/tcp 514/udp (syslog receiver)
 #   Cockpit         9090/tcp
+#   OnlyOffice (SO) 8092/tcp — internal only, NOT exposed via NPM
 #
 # LLM backend: Ollama on srv5 (192.168.68.15:11434)
 #
+# Port assignments on srv6:
+#   5437 — postgres-paperless
+#   5438 — postgres-simple-office
+#   5439 — postgres-authentik
+#   8086 — paperless-ngx
+#   8090 — simple-office-api
+#   8091 — simple-office-web
+#   8092 — onlyoffice-so (LAN only)
+#   9000 — authentik
+#
 # Vault requirements (ansible-vault edit group_vars/all/vault.yml):
-#   onlyoffice_db_password      : "YOUR_PASSWORD"
-#   onlyoffice_jwt_secret       : "YOUR_SECRET"      # openssl rand -hex 32
+#   --- Paperless ---
 #   paperless_db_password       : "YOUR_PASSWORD"
 #   paperless_secret_key        : "YOUR_SECRET"      # openssl rand -hex 32
 #   paperless_admin_password    : "YOUR_PASSWORD"
-#   filebrowser_admin_password  : "YOUR_PASSWORD"
+#   --- Simple Office ---
+#   so_db_password              : "YOUR_PASSWORD"    # openssl rand -hex 24
+#   so_jwt_secret               : "YOUR_SECRET"      # openssl rand -hex 32
+#   so_onlyoffice_jwt_secret    : "YOUR_SECRET"      # openssl rand -hex 32
+#   so_session_secret           : "YOUR_SECRET"      # openssl rand -hex 32
+#   so_oidc_client_id           : "FROM_AUTHENTIK"   # added after pass 1
+#   so_oidc_client_secret       : "FROM_AUTHENTIK"   # added after pass 1
+#   --- Authentik ---
+#   authentik_db_password       : "YOUR_PASSWORD"    # openssl rand -hex 24
+#   authentik_secret_key        : "YOUR_SECRET"      # openssl rand -hex 60
 #
 # Run:
 #   ansible-playbook playbooks/srv6_stacks.yml -i inventory.yml --limit srv6 --ask-vault-pass --become
@@ -44,13 +64,17 @@
     docker_network: proxy
     ollama_url: "http://192.168.68.15:11434"
     stack_dirs:
-      - postgres-onlyoffice
       - postgres-paperless
-      - onlyoffice
-      - filebrowser
+      - postgres-simple-office
+      - postgres-authentik
       - paperless
       - paperless-ai
       - paperless-gpt
+      - authentik
+      - redis-simple-office
+      - onlyoffice-so
+      - simple-office-api
+      - simple-office-web
 
   pre_tasks:
     - name: Configure NFS server and local /opt/stacks symlink
@@ -62,12 +86,18 @@
     - name: Assert required vault variables are present
       ansible.builtin.assert:
         that:
-          - onlyoffice_db_password is defined and onlyoffice_db_password | length > 0
-          - onlyoffice_jwt_secret is defined and onlyoffice_jwt_secret | length > 0
+          # Paperless
           - paperless_db_password is defined and paperless_db_password | length > 0
           - paperless_secret_key is defined and paperless_secret_key | length > 0
           - paperless_admin_password is defined and paperless_admin_password | length > 0
-          - filebrowser_admin_password is defined and filebrowser_admin_password | length > 0
+          # Simple Office
+          - so_db_password is defined and so_db_password | length > 0
+          - so_jwt_secret is defined and so_jwt_secret | length > 0
+          - so_onlyoffice_jwt_secret is defined and so_onlyoffice_jwt_secret | length > 0
+          - so_session_secret is defined and so_session_secret | length > 0
+          # Authentik
+          - authentik_db_password is defined and authentik_db_password | length > 0
+          - authentik_secret_key is defined and authentik_secret_key | length > 0
         fail_msg: >
           Missing vault variables. See playbook header for full list.
 
@@ -93,13 +123,25 @@
         - export
         - data
 
-    - name: Ensure FileBrowser data directory exists
+    - name: Ensure Simple Office storage directory exists
       ansible.builtin.file:
-        path: "{{ stacks_root }}/filebrowser/data"
+        path: "{{ stacks_root }}/simple-office-api/storage"
         state: directory
         owner: root
-        group: root
-        mode: "0755"
+        group: docker-admin
+        mode: "0775"
+
+    - name: Ensure Authentik media and certs directories exist
+      ansible.builtin.file:
+        path: "{{ stacks_root }}/authentik/{{ item }}"
+        state: directory
+        owner: root
+        group: docker-admin
+        mode: "0775"
+      loop:
+        - media
+        - certs
+        - custom-templates
 
     - name: Ensure shared Docker network exists
       community.docker.docker_network:
@@ -113,31 +155,6 @@
       ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/cockpit.yml"
 
   tasks:
-    # ── OnlyOffice stack ──────────────────────────────────────────────────────
-    - name: Deploy postgres-onlyoffice stack
-      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
-      vars:
-        stack_name: postgres-onlyoffice
-
-    - name: Wait for postgres-onlyoffice to be ready
-      ansible.builtin.wait_for:
-        host: "{{ ansible_host }}"
-        port: 5436
-        delay: 5
-        timeout: 60
-        msg: "Timed out waiting for postgres-onlyoffice on port 5436"
-
-    - name: Deploy onlyoffice stack
-      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
-      vars:
-        stack_name: onlyoffice
-
-    # ── FileBrowser Quantum stack ─────────────────────────────────────────────
-    - name: Deploy filebrowser stack
-      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
-      vars:
-        stack_name: filebrowser
-
     # ── Paperless stack ───────────────────────────────────────────────────────
     - name: Deploy postgres-paperless stack
       ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
@@ -174,3 +191,84 @@
       ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
       vars:
         stack_name: paperless-gpt
+
+    # ── Authentik SSO stack ───────────────────────────────────────────────────
+    - name: Deploy postgres-authentik stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: postgres-authentik
+
+    - name: Wait for postgres-authentik to be ready
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 5439
+        delay: 5
+        timeout: 60
+        msg: "Timed out waiting for postgres-authentik on port 5439"
+
+    - name: Deploy authentik stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: authentik
+
+    - name: Wait for Authentik to be ready
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 9000
+        delay: 15
+        timeout: 180
+        msg: "Timed out waiting for Authentik on port 9000"
+
+    # ── Simple Office stack ───────────────────────────────────────────────────
+    # Two-pass deployment:
+    #   Pass 1: Deploy postgres-simple-office, redis-simple-office, onlyoffice-so
+    #           Complete Authentik OIDC client setup (see checklist below)
+    #           Add so_oidc_client_id and so_oidc_client_secret to vault
+    #   Pass 2: Uncomment and deploy simple-office-api and simple-office-web
+    #
+    # Authentik OIDC checklist (one-time, manual — between pass 1 and pass 2):
+    #   1. Login to Authentik at https://auth.techsimple.dev/if/flow/initial-setup/
+    #   2. Admin → Applications → Providers → Create OAuth2/OpenID Provider
+    #      Name: simple-office
+    #      Redirect URI: https://app.techsimple.dev/api/v1/auth/callback
+    #      Note the Client ID and Client Secret
+    #   3. Admin → Applications → Applications → Create
+    #      Name: Simple Office, Slug: simple-office, Provider: simple-office
+    #   4. ansible-vault edit group_vars/all/vault.yml
+    #      Add: so_oidc_client_id, so_oidc_client_secret
+    #   5. Re-run playbook (pass 2) to deploy simple-office-api and simple-office-web
+
+    - name: Deploy postgres-simple-office stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: postgres-simple-office
+
+    - name: Wait for postgres-simple-office to be ready
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 5438
+        delay: 5
+        timeout: 60
+        msg: "Timed out waiting for postgres-simple-office on port 5438"
+
+    - name: Deploy redis-simple-office stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: redis-simple-office
+
+    - name: Deploy onlyoffice-so stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: onlyoffice-so
+
+    # NOTE: Comment out the two tasks below until Authentik OIDC client is configured
+    #       and so_oidc_client_id / so_oidc_client_secret are added to vault.
+    - name: Deploy simple-office-api stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: simple-office-api
+
+    - name: Deploy simple-office-web stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: simple-office-web

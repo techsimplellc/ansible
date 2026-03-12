@@ -1,0 +1,37 @@
+# Repo path: ~/git/ansible/playbooks/templates/postgres-authentik/docker-compose.yml.j2
+---
+# PostgreSQL — Dedicated instance for Authentik SSO
+# Docs: https://hub.docker.com/_/postgres
+#
+# Port 5439 — does not conflict with:
+#   5436 (postgres-onlyoffice)
+#   5437 (postgres-paperless)
+#   5438 (postgres-simple-office)
+
+services:
+  postgres-authentik:
+    image: postgres:16-alpine
+    container_name: postgres-authentik
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: authentik
+      POSTGRES_PASSWORD: "{{ authentik_db_password }}"
+      POSTGRES_DB: authentik
+    volumes:
+      - postgres_authentik_data:/var/lib/postgresql/data
+    ports:
+      - "5439:5432"
+    networks:
+      - proxy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U authentik -d authentik"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_authentik_data:
+
+networks:
+  proxy:
+    external: true

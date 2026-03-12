@@ -1,0 +1,70 @@
+# Repo path: ~/git/ansible/playbooks/templates/simple-office-api/docker-compose.yml.j2
+---
+# Simple Office API — Node.js/Express REST API backend
+# Docs  : (internal — see PRD & Architecture document)
+# Image : ghcr.io/techsimplellc/simple-office-api:latest
+#
+# Exposed via cloudflared tunnel through NPM on srv1.
+# NPM upstream: http://192.168.68.16:8090
+# External URL: https://app.techsimple.dev/api
+#
+# Prerequisites before deploying:
+#   1. postgres-simple-office must be running (port 5438 reachable)
+#   2. redis-simple-office must be running
+#   3. onlyoffice-so must be running (port 8092 reachable)
+#   4. authentik must be running and OIDC client configured
+#   5. so_oidc_client_id and so_oidc_client_secret must be in vault
+#
+# Storage driver:
+#   STORAGE_DRIVER=local for dev/srv6 (bind mount to /opt/stacks/simple-office-api/storage)
+#   Switch to STORAGE_DRIVER=s3 for production cloud VPS — no code change required.
+#
+# Database migrations run automatically on container start (NODE_ENV=production).
+
+services:
+  simple-office-api:
+    image: ghcr.io/techsimplellc/simple-office-api:latest
+    container_name: simple-office-api
+    restart: unless-stopped
+    environment:
+      # Runtime
+      NODE_ENV: production
+      PORT: 3000
+      # Database
+      DATABASE_URL: "postgresql://simpleoffice:{{ so_db_password }}@postgres-simple-office:5432/simpleoffice"
+      # Redis
+      REDIS_URL: "redis://redis-simple-office:6379"
+      # Session
+      SESSION_SECRET: "{{ so_session_secret }}"
+      # JWT (internal API tokens)
+      JWT_SECRET: "{{ so_jwt_secret }}"
+      # OnlyOffice Document Server
+      ONLYOFFICE_INTERNAL_URL: "http://onlyoffice-so:80"
+      ONLYOFFICE_PUBLIC_URL: "https://office-so.techsimple.dev"
+      ONLYOFFICE_JWT_SECRET: "{{ so_onlyoffice_jwt_secret }}"
+      # OIDC — Authentik
+      OIDC_ISSUER_URL: "https://auth.techsimple.dev/application/o/simple-office/"
+      OIDC_CLIENT_ID: "{{ so_oidc_client_id }}"
+      OIDC_CLIENT_SECRET: "{{ so_oidc_client_secret }}"
+      OIDC_REDIRECT_URI: "https://app.techsimple.dev/api/v1/auth/callback"
+      # Storage
+      STORAGE_DRIVER: local
+      STORAGE_LOCAL_PATH: /app/storage
+      # App
+      APP_BASE_URL: "https://app.techsimple.dev"
+      API_BASE_URL: "https://app.techsimple.dev/api"
+      TZ: "America/New_York"
+    volumes:
+      - "{{ stacks_root }}/simple-office-api/storage:/app/storage"
+    ports:
+      - "8090:3000"
+    networks:
+      - proxy
+    depends_on:
+      - postgres-simple-office
+      - redis-simple-office
+      - onlyoffice-so
+
+networks:
+  proxy:
+    external: true

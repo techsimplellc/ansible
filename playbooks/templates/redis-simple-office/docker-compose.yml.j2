@@ -1,0 +1,33 @@
+# Repo path: ~/git/ansible/playbooks/templates/redis-simple-office/docker-compose.yml.j2
+---
+# Redis — Dedicated instance for Simple Office
+# Docs: https://hub.docker.com/_/redis
+#
+# Separate from redis-authentik to avoid cross-service key collisions.
+# Used by Simple Office API for:
+#   - Session store
+#   - OnlyOffice callback queue
+#   - Rate limit counters
+
+services:
+  redis-simple-office:
+    image: redis:7-alpine
+    container_name: redis-simple-office
+    restart: unless-stopped
+    command: --save 60 1 --loglevel warning
+    volumes:
+      - redis_simple_office_data:/data
+    networks:
+      - proxy
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  redis_simple_office_data:
+
+networks:
+  proxy:
+    external: true

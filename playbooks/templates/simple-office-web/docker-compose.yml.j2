@@ -1,0 +1,36 @@
+# Repo path: ~/git/ansible/playbooks/templates/simple-office-web/docker-compose.yml.j2
+---
+# Simple Office Web — React/TypeScript/Vite SPA frontend
+# Docs  : (internal — see PRD & Architecture document)
+# Image : ghcr.io/techsimplellc/simple-office-web:latest
+#
+# Exposed via cloudflared tunnel through NPM on srv1.
+# NPM upstream: http://192.168.68.16:8091
+# External URL: https://app.techsimple.dev
+#
+# The frontend is a static SPA served by nginx inside the container.
+# All /api/* requests are proxied to simple-office-api by NPM — the
+# frontend container itself only serves the built React app.
+#
+# VITE_* vars are baked into the static build at image build time.
+# Changing them requires a new image build and redeployment.
+
+services:
+  simple-office-web:
+    image: ghcr.io/techsimplellc/simple-office-web:latest
+    container_name: simple-office-web
+    restart: unless-stopped
+    environment:
+      VITE_API_BASE_URL: "https://app.techsimple.dev/api/v1"
+      VITE_AUTH_URL: "https://auth.techsimple.dev"
+      VITE_APP_NAME: "Simple Office"
+    ports:
+      - "8091:80"
+    networks:
+      - proxy
+    depends_on:
+      - simple-office-api
+
+networks:
+  proxy:
+    external: true

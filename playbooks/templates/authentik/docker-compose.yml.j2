@@ -1,0 +1,92 @@
+# Repo path: ~/git/ansible/playbooks/templates/authentik/docker-compose.yml.j2
+---
+# Authentik — Self-hosted OIDC / SSO Identity Provider
+# Docs  : https://docs.goauthentik.io/docs/install-config/install/docker-compose
+# Image : https://ghcr.io/goauthentik/server
+#
+# Exposed via cloudflared tunnel through NPM on srv1.
+# NPM upstream: http://192.168.68.16:9000
+# External URL: https://auth.techsimple.dev
+#
+# AUTHENTIK_SECRET_KEY: generate with: openssl rand -hex 60
+#
+# Two services required:
+#   authentik-server  — handles web UI and API
+#   authentik-worker  — handles background tasks (flows, policies, events)
+#
+# First-time setup:
+#   Navigate to https://auth.techsimple.dev/if/flow/initial-setup/
+#   to create the initial admin account.
+#
+# Post-deploy: configure Simple Office OIDC client (see srv6_stacks.yml notes)
+
+services:
+  authentik-server:
+    image: ghcr.io/goauthentik/server:2024.10
+    container_name: authentik-server
+    restart: unless-stopped
+    command: server
+    environment:
+      AUTHENTIK_REDIS__HOST: redis-authentik
+      AUTHENTIK_POSTGRESQL__HOST: postgres-authentik
+      AUTHENTIK_POSTGRESQL__USER: authentik
+      AUTHENTIK_POSTGRESQL__PASSWORD: "{{ authentik_db_password }}"
+      AUTHENTIK_POSTGRESQL__NAME: authentik
+      AUTHENTIK_SECRET_KEY: "{{ authentik_secret_key }}"
+      AUTHENTIK_ERROR_REPORTING__ENABLED: "false"
+      AUTHENTIK_LOG_LEVEL: warning
+    volumes:
+      - "{{ stacks_root }}/authentik/media:/media"
+      - "{{ stacks_root }}/authentik/custom-templates:/templates"
+    ports:
+      - "9000:9000"
+    networks:
+      - proxy
+    depends_on:
+      - redis-authentik
+
+  authentik-worker:
+    image: ghcr.io/goauthentik/server:2024.10
+    container_name: authentik-worker
+    restart: unless-stopped
+    command: worker
+    environment:
+      AUTHENTIK_REDIS__HOST: redis-authentik
+      AUTHENTIK_POSTGRESQL__HOST: postgres-authentik
+      AUTHENTIK_POSTGRESQL__USER: authentik
+      AUTHENTIK_POSTGRESQL__PASSWORD: "{{ authentik_db_password }}"
+      AUTHENTIK_POSTGRESQL__NAME: authentik
+      AUTHENTIK_SECRET_KEY: "{{ authentik_secret_key }}"
+      AUTHENTIK_ERROR_REPORTING__ENABLED: "false"
+      AUTHENTIK_LOG_LEVEL: warning
+    volumes:
+      - "{{ stacks_root }}/authentik/media:/media"
+      - "{{ stacks_root }}/authentik/certs:/certs"
+      - "{{ stacks_root }}/authentik/custom-templates:/templates"
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - proxy
+    depends_on:
+      - redis-authentik
+
+  redis-authentik:
+    image: redis:7-alpine
+    container_name: redis-authentik
+    restart: unless-stopped
+    command: --save 60 1 --loglevel warning
+    volumes:
+      - redis_authentik_data:/data
+    networks:
+      - proxy
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  redis_authentik_data:
+
+networks:
+  proxy:
+    external: true
