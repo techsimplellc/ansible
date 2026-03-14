@@ -158,3 +158,8 @@
       ansible.builtin.file:
         path: /tmp/espocrm-config-internal.php
         state: absent
+
+    - name: EspoCRM | Fix /var/www/html/data ownership in container
+      ansible.builtin.command:
+        cmd: docker exec espocrm chown -R www-data:www-data /var/www/html/data
+      changed_when: false

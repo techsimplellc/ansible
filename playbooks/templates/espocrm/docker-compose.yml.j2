@@ -16,6 +16,10 @@ services:
     image: espocrm/espocrm:latest
     container_name: espocrm
     restart: unless-stopped
+    entrypoint: >
+      bash -c "chown -R www-data:www-data /var/www/html/data &&
+               chmod -R 755 /var/www/html/data &&
+               docker-entrypoint.sh apache2-foreground"
     environment:
       # Database
       ESPOCRM_DATABASE_PLATFORM: Postgresql
