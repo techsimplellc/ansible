@@ -26,6 +26,15 @@
     group: root
     mode: "0755"
 
+- name: Verify NFS server (srv6) is reachable on port 2049 before migration
+  ansible.builtin.wait_for:
+    host: 192.168.68.16
+    port: 2049
+    timeout: 10
+    msg: >
+      NFS server srv6 (192.168.68.16) is not reachable on port 2049.
+      Run playbooks/srv6_stacks.yml with the nfs_server task before running NFS client playbooks.
+
 - name: Migrate existing /opt/stacks data to NFS share before mounting
   ansible.builtin.shell: |
     if [ -d /opt/stacks ] && [ ! -L /opt/stacks ]; then
@@ -35,11 +44,12 @@
       cp -a /opt/stacks/. /mnt/storage_staging/stacks/
       umount /mnt/storage_staging
       rmdir /mnt/storage_staging
+      echo "migrated"
     fi
   args:
     executable: /bin/bash
   register: migration_result
-  changed_when: migration_result.rc == 0
+  changed_when: "'migrated' in migration_result.stdout"
 
 - name: Remove existing /opt/stacks directory (replace with symlink)
   ansible.builtin.file:
