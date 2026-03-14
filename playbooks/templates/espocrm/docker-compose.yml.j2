@@ -18,6 +18,7 @@ services:
     restart: unless-stopped
     environment:
       # Database
+      ESPOCRM_DATABASE_PLATFORM: Postgresql
       ESPOCRM_DATABASE_DRIVER: pdo_pgsql
       ESPOCRM_DATABASE_HOST: postgres-espocrm
       ESPOCRM_DATABASE_PORT: 5432
