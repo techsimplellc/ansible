@@ -1,0 +1,67 @@
+---
+# Auto-renewal via systemd timer (preferred) or cron (fallback).
+
+- name: Deploy certbot-renew.service (systemd)
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/certbot-renew.service
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Certbot Renewal
+      After=network.target
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/local/bin/certbot renew --quiet \
+        --deploy-hook "systemctl reload nginx"
+  when: ansible_service_mgr == 'systemd'
+  tags: certbot_renewal
+
+- name: Deploy certbot-renew.timer (systemd)
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/certbot-renew.timer
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Run certbot renewal twice daily
+      After=network.target
+
+      [Timer]
+      OnCalendar=*-*-* 00,12:00:00
+      RandomizedDelaySec=3600
+      Persistent=true
+
+      [Install]
+      WantedBy=timers.target
+  when: ansible_service_mgr == 'systemd'
+  tags: certbot_renewal
+
+- name: Reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: true
+  when: ansible_service_mgr == 'systemd'
+  tags: certbot_renewal
+
+- name: Enable and start certbot-renew.timer (systemd)
+  ansible.builtin.systemd:
+    name: certbot-renew.timer
+    enabled: true
+    state: started
+  when: ansible_service_mgr == 'systemd'
+  tags: certbot_renewal
+
+- name: Install certbot renewal cron job (non-systemd fallback)
+  ansible.builtin.cron:
+    name: certbot renewal
+    minute: "0"
+    hour: "3,15"
+    job: >-
+      /usr/local/bin/certbot renew --quiet
+      --deploy-hook "systemctl reload nginx"
+    user: root
+  when: ansible_service_mgr != 'systemd'
+  tags: certbot_renewal

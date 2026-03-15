@@ -1,0 +1,4 @@
+# This file must be encrypted with ansible-vault.
+# Run: ansible-vault create group_vars/webservers/vault.yml
+# Then add: cloudflare_api_token: "your_token_here"
+# This plaintext placeholder must be replaced before running the playbook.

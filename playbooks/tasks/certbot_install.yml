@@ -1,0 +1,87 @@
+---
+# Install certbot with DNS-Cloudflare plugin.
+# Strategy A (preferred): snapd
+# Strategy B (fallback):  pip virtualenv in /opt/certbot/
+
+- name: Install certbot (snapd preferred, pip fallback)
+  tags: certbot_install
+  block:
+    - name: Check snapd availability
+      ansible.builtin.command: which snapd
+      register: snapd_check
+      changed_when: false
+      failed_when: false
+
+    - name: Abort snap block if snapd is not available
+      ansible.builtin.fail:
+        msg: "snapd not found — falling back to pip virtualenv"
+      when: snapd_check.rc != 0
+
+    - name: Install snapd package
+      ansible.builtin.package:
+        name: snapd
+        state: present
+
+    - name: Enable and start snapd service
+      ansible.builtin.service:
+        name: snapd
+        enabled: true
+        state: started
+
+    - name: Wait for snapd socket to be ready
+      ansible.builtin.pause:
+        seconds: 10
+
+    - name: Install certbot via snap
+      community.general.snap:
+        name: certbot
+        classic: true
+        state: present
+
+    - name: Install certbot-dns-cloudflare plugin via snap
+      community.general.snap:
+        name: certbot-dns-cloudflare
+        state: present
+
+    - name: Create certbot symlink (snap → /usr/local/bin)
+      ansible.builtin.file:
+        src: /snap/bin/certbot
+        dest: /usr/local/bin/certbot
+        state: link
+        force: true
+
+    - name: Set certbot_method fact (snap)
+      ansible.builtin.set_fact:
+        certbot_method: snap
+
+  rescue:
+    - name: Install python3-pip and python3-venv (pip fallback)
+      ansible.builtin.package:
+        name:
+          - python3-pip
+          - python3-venv
+        state: present
+
+    - name: Create certbot virtualenv at /opt/certbot
+      ansible.builtin.command:
+        cmd: python3 -m venv /opt/certbot
+        creates: /opt/certbot/bin/activate
+
+    - name: Install certbot and certbot-dns-cloudflare into venv
+      ansible.builtin.pip:
+        name:
+          - certbot
+          - certbot-dns-cloudflare
+        virtualenv: /opt/certbot
+        state: present
+
+    - name: Create certbot symlink (pip venv → /usr/local/bin)
+      ansible.builtin.file:
+        src: /opt/certbot/bin/certbot
+        dest: /usr/local/bin/certbot
+        state: link
+        force: true
+
+    - name: Set certbot_method fact (pip)
+      ansible.builtin.set_fact:
+        certbot_method: pip
