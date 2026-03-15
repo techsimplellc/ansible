@@ -7,7 +7,7 @@
 
 - name: Assert SSH is on port {{ ssh_port }}
   ansible.builtin.assert:
-    that: "'{{ ssh_port }}' in ss_output.stdout"
+    that: ssh_port | string in ss_output.stdout
     fail_msg: "SSH is not listening on port {{ ssh_port }}"
   tags: verify
 
