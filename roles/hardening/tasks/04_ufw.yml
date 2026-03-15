@@ -24,7 +24,7 @@
   community.general.ufw:
     state: enabled
 
-# srv1 only — Cloudflare IP allowlist for Traefik
+# srv1 only — Cloudflare IP allowlist for NPM
 - name: Allow Cloudflare IPs to port 443
   community.general.ufw:
     rule: allow
@@ -48,4 +48,4 @@
     - 190.93.240.0/20
     - 197.234.240.0/22
     - 198.41.128.0/17
-  when: is_traefik_host | bool
+  when: inventory_hostname == 'srv1'
