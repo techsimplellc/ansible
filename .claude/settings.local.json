@@ -3,7 +3,8 @@
     "allow": [
       "Bash(ansible:*)",
       "Bash(ssh:*)",
-      "Bash(ansible-galaxy collection:*)"
+      "Bash(ansible-galaxy collection:*)",
+      "Bash(cd:*)"
     ]
   }
 }
