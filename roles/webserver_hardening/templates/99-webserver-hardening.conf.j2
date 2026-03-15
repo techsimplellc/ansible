@@ -1,0 +1,47 @@
+# PPF Webserver — Kernel hardening (sysctl)
+# Managed by Ansible — do not edit manually
+# Role: webserver_hardening / 07_kernel.yml
+
+# IP forwarding — disabled (no routing needed on web server)
+net.ipv4.ip_forward = 0
+net.ipv6.conf.all.forwarding = 0
+
+# Source routing — disabled
+net.ipv4.conf.all.accept_source_route = 0
+net.ipv4.conf.default.accept_source_route = 0
+
+# ICMP redirects — disabled (both accept and send)
+net.ipv4.conf.all.accept_redirects = 0
+net.ipv4.conf.default.accept_redirects = 0
+net.ipv4.conf.all.send_redirects = 0
+net.ipv4.conf.default.send_redirects = 0
+net.ipv6.conf.all.accept_redirects = 0
+
+# Reverse path filtering
+net.ipv4.conf.all.rp_filter = 1
+net.ipv4.conf.default.rp_filter = 1
+
+# SYN flood protection
+net.ipv4.tcp_syncookies = 1
+
+# ASLR
+kernel.randomize_va_space = 2
+
+# Ignore broadcast ICMP
+net.ipv4.icmp_echo_ignore_broadcasts = 1
+
+# Log martian packets
+net.ipv4.conf.all.log_martians = 1
+net.ipv4.conf.default.log_martians = 1
+
+# Disable magic SysRq key
+kernel.sysrq = 0
+
+# Restrict core dumps
+fs.suid_dumpable = 0
+
+# Restrict dmesg to root
+kernel.dmesg_restrict = 1
+
+# Restrict ptrace
+kernel.yama.ptrace_scope = 1

@@ -1,0 +1,22 @@
+---
+- name: Remove insecure packages if present
+  ansible.builtin.package:
+    name:
+      - telnet
+      - rsh
+      - rsh-client
+      - rsh-server
+      - nis
+      - xinetd
+    state: absent
+  ignore_errors: true
+  tags: packages
+
+- name: Deploy restrictive umask profile script
+  ansible.builtin.template:
+    src: umask.sh.j2
+    dest: /etc/profile.d/umask.sh
+    owner: root
+    group: root
+    mode: "0644"
+  tags: packages

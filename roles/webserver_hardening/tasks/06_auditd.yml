@@ -1,0 +1,36 @@
+---
+- name: Install auditd
+  ansible.builtin.package:
+    name: auditd
+    state: present
+  tags: auditd
+
+- name: Ensure /etc/audit/rules.d/ directory exists
+  ansible.builtin.file:
+    path: /etc/audit/rules.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+  tags: auditd
+
+- name: Deploy PPF webserver audit rules
+  ansible.builtin.template:
+    src: audit.rules.j2
+    dest: /etc/audit/rules.d/ppf-webserver.rules
+    owner: root
+    group: root
+    mode: "0640"
+  tags: auditd
+
+- name: Enable and start auditd
+  ansible.builtin.service:
+    name: auditd
+    enabled: true
+    state: started
+  tags: auditd
+
+- name: Load audit rules immediately
+  ansible.builtin.command: augenrules --load
+  changed_when: false
+  tags: auditd

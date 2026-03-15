@@ -1,0 +1,61 @@
+---
+# =============================================================================
+# harden_webserver.yml — Harden public-facing web servers
+# Target group: webservers (e.g. painterprecision.com / 144.202.87.7)
+#
+# Uses the same two-play port-detection pattern as harden.yml:
+#   Play 1 — Detects whether SSH is currently on port 22 or 2222
+#   Play 2 — Applies the webserver_hardening role
+#
+# Run:
+#   ansible-playbook playbooks/harden_webserver.yml \
+#     -i inventory.yml --limit painterprecision --ask-vault-pass --become
+#
+# Tag-scoped runs (examples):
+#   --tags ssh        — SSH hardening only
+#   --tags firewall   — Firewall rules only
+#   --tags verify     — Post-hardening verification only
+# =============================================================================
+
+# Play 1 — Detect which SSH port is currently active.
+# A fresh host listens on 22; after hardening it moves to 2222.
+# This play probes from the control node so the playbook is idempotent.
+- name: Detect active SSH port on webservers
+  hosts: webservers
+  gather_facts: false
+  become: false
+  tasks:
+    - name: Check if SSH is already listening on port 2222
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 2222
+        timeout: 5
+        state: started
+      delegate_to: localhost
+      ignore_errors: true
+      register: port_2222_check
+
+    - name: Set detected SSH port
+      ansible.builtin.set_fact:
+        detected_ssh_port: "{{ '2222' if not port_2222_check.failed else '22' }}"
+
+    - name: Add host to webservers_ready group with correct port
+      ansible.builtin.add_host:
+        name: "{{ inventory_hostname }}"
+        groups: webservers_ready
+        ansible_host: "{{ ansible_host }}"
+        ansible_port: "{{ detected_ssh_port }}"
+        ansible_user: "{{ ansible_user | default('bpainter') }}"
+
+    - name: Report detected port
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }}: SSH detected on port {{ detected_ssh_port }}"
+
+# Play 2 — Apply webserver hardening role.
+# Targets the in-memory group built in Play 1 (correct port already set).
+- name: PPF Webserver — OS Hardening and Security Baseline
+  hosts: webservers_ready
+  gather_facts: true
+  become: true
+  roles:
+    - webserver_hardening

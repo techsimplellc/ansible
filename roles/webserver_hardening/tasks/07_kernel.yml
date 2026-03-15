@@ -1,0 +1,10 @@
+---
+- name: Deploy webserver kernel hardening sysctl config
+  ansible.builtin.template:
+    src: 99-webserver-hardening.conf.j2
+    dest: /etc/sysctl.d/99-webserver-hardening.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Apply sysctl
+  tags: kernel

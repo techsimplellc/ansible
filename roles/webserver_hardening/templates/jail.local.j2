@@ -1,0 +1,16 @@
+# PPF Webserver — fail2ban jail configuration
+# Managed by Ansible — do not edit manually
+# Role: webserver_hardening / 05_fail2ban.yml
+
+[DEFAULT]
+bantime  = 86400
+findtime = 600
+maxretry = 3
+ignoreip = 127.0.0.1/8
+
+[sshd]
+enabled  = true
+port     = {{ ssh_port }}
+filter   = sshd
+logpath  = /var/log/auth.log
+maxretry = 3

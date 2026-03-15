@@ -1,0 +1,43 @@
+# PPF Webserver — auditd rules
+# Managed by Ansible — do not edit manually
+# Role: webserver_hardening / 06_auditd.yml
+
+# Delete all existing rules
+-D
+
+# Buffer size
+-b 8192
+
+# Failure mode: 1=log, 2=panic
+-f 1
+
+# Monitor passwd/shadow/group changes
+-w /etc/passwd -p wa -k identity
+-w /etc/shadow -p wa -k identity
+-w /etc/group -p wa -k identity
+-w /etc/gshadow -p wa -k identity
+
+# SSH config changes
+-w /etc/ssh/sshd_config -p wa -k sshd_config
+
+# Privilege escalation
+-w /bin/su -p x -k priv_esc
+-w /usr/bin/sudo -p x -k priv_esc
+-w /etc/sudoers -p wa -k priv_esc
+-w /etc/sudoers.d/ -p wa -k priv_esc
+
+# Network configuration changes
+-w /etc/hosts -p wa -k network
+-w /etc/network/ -p wa -k network
+-a always,exit -F arch=b64 -S sethostname -S setdomainname -k network
+
+# Kernel module loading
+-w /sbin/insmod -p x -k modules
+-w /sbin/rmmod -p x -k modules
+-w /sbin/modprobe -p x -k modules
+
+# Unauthorized file access attempts
+-a always,exit -F arch=b64 -S open -F dir=/etc -F success=0 -k unauth_access
+
+# Make rules immutable (must be last line)
+-e 2

@@ -1,0 +1,23 @@
+---
+- name: Install AppArmor packages (Debian only)
+  ansible.builtin.apt:
+    name:
+      - apparmor
+      - apparmor-utils
+    state: present
+  when: ansible_os_family == 'Debian'
+  tags: apparmor
+
+- name: Enable and start AppArmor service (Debian only)
+  ansible.builtin.service:
+    name: apparmor
+    enabled: true
+    state: started
+  when: ansible_os_family == 'Debian'
+  tags: apparmor
+
+- name: Enforce all AppArmor profiles (Debian only)
+  ansible.builtin.command: aa-enforce /etc/apparmor.d/*
+  changed_when: false
+  when: ansible_os_family == 'Debian'
+  tags: apparmor

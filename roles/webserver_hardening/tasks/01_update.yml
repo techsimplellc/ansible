@@ -1,0 +1,27 @@
+---
+# Distro-agnostic full system update.
+# Debian family: apt dist-upgrade
+# RedHat family: dnf/yum update
+
+- name: Update apt cache and run dist-upgrade (Debian)
+  ansible.builtin.apt:
+    update_cache: true
+    upgrade: dist
+    cache_valid_time: 0
+  when: ansible_os_family == 'Debian'
+  tags: update
+
+- name: Update all packages (RedHat)
+  ansible.builtin.dnf:
+    name: "*"
+    state: latest
+    update_only: true
+  when: ansible_os_family == 'RedHat'
+  tags: update
+
+- name: Autoremove unused packages (Debian)
+  ansible.builtin.apt:
+    autoremove: true
+    autoclean: true
+  when: ansible_os_family == 'Debian'
+  tags: update

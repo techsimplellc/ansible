@@ -1,0 +1,113 @@
+---
+- name: Check SSH is listening on port {{ ssh_port }}
+  ansible.builtin.command: ss -tlnp
+  register: ss_output
+  changed_when: false
+  tags: verify
+
+- name: Assert SSH is on port {{ ssh_port }}
+  ansible.builtin.assert:
+    that: "'{{ ssh_port }}' in ss_output.stdout"
+    fail_msg: "SSH is not listening on port {{ ssh_port }}"
+  tags: verify
+
+- name: Check PasswordAuthentication setting via sshd -T
+  ansible.builtin.command: sshd -T
+  register: sshd_config_dump
+  changed_when: false
+  tags: verify
+
+- name: Assert PasswordAuthentication is disabled
+  ansible.builtin.assert:
+    that: "'passwordauthentication no' in sshd_config_dump.stdout"
+    fail_msg: "PasswordAuthentication is not disabled in sshd"
+  tags: verify
+
+- name: Check root account lock status
+  ansible.builtin.command: passwd -S root
+  register: root_passwd_status
+  changed_when: false
+  tags: verify
+
+- name: Assert root account is locked
+  ansible.builtin.assert:
+    that: "root_passwd_status.stdout.split()[1] == 'L'"
+    fail_msg: "Root account is not locked: {{ root_passwd_status.stdout }}"
+  tags: verify
+
+- name: Check firewall service status (Debian/UFW)
+  ansible.builtin.command: ufw status
+  register: ufw_status
+  changed_when: false
+  when: ansible_os_family == 'Debian'
+  tags: verify
+
+- name: Assert UFW is active (Debian)
+  ansible.builtin.assert:
+    that: "'active' in ufw_status.stdout"
+    fail_msg: "UFW is not active"
+  when: ansible_os_family == 'Debian'
+  tags: verify
+
+- name: Check firewalld service status (RedHat)
+  ansible.builtin.command: systemctl is-active firewalld
+  register: firewalld_status
+  changed_when: false
+  when: ansible_os_family == 'RedHat'
+  tags: verify
+
+- name: Assert firewalld is active (RedHat)
+  ansible.builtin.assert:
+    that: "firewalld_status.stdout == 'active'"
+    fail_msg: "firewalld is not active"
+  when: ansible_os_family == 'RedHat'
+  tags: verify
+
+- name: Check fail2ban service status
+  ansible.builtin.command: systemctl is-active fail2ban
+  register: fail2ban_status
+  changed_when: false
+  tags: verify
+
+- name: Assert fail2ban is active
+  ansible.builtin.assert:
+    that: "fail2ban_status.stdout == 'active'"
+    fail_msg: "fail2ban is not active"
+  tags: verify
+
+- name: Check auditd service status
+  ansible.builtin.command: systemctl is-active auditd
+  register: auditd_status
+  changed_when: false
+  tags: verify
+
+- name: Assert auditd is active
+  ansible.builtin.assert:
+    that: "auditd_status.stdout == 'active'"
+    fail_msg: "auditd is not active"
+  tags: verify
+
+- name: Check ASLR setting
+  ansible.builtin.command: cat /proc/sys/kernel/randomize_va_space
+  register: aslr_value
+  changed_when: false
+  tags: verify
+
+- name: Assert ASLR is set to 2
+  ansible.builtin.assert:
+    that: "aslr_value.stdout | trim == '2'"
+    fail_msg: "ASLR is not set to 2 (got: {{ aslr_value.stdout | trim }})"
+  tags: verify
+
+- name: Verification summary
+  ansible.builtin.debug:
+    msg:
+      - "=== Webserver hardening verification complete: {{ inventory_hostname }} ==="
+      - "  SSH port {{ ssh_port }} : OK"
+      - "  PasswordAuthentication no : OK"
+      - "  root locked               : OK"
+      - "  firewall active           : OK"
+      - "  fail2ban active           : OK"
+      - "  auditd active             : OK"
+      - "  ASLR = 2                  : OK"
+  tags: verify

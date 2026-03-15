@@ -1,0 +1,33 @@
+---
+- name: Ensure bpainter user exists with sudo privileges
+  ansible.builtin.user:
+    name: bpainter
+    comment: "PPF Admin"
+    shell: /bin/bash
+    groups: sudo
+    append: true
+    create_home: true
+    state: present
+  tags: users
+
+- name: Lock root account
+  ansible.builtin.user:
+    name: root
+    password_lock: true
+  tags: users
+
+- name: Gather current passwd entries
+  ansible.builtin.command: awk -F':' '$3 == 0 {print $1}' /etc/passwd
+  register: uid0_users
+  changed_when: false
+  tags: users
+
+- name: Assert no unexpected UID 0 accounts exist
+  ansible.builtin.assert:
+    that:
+      - uid0_users.stdout_lines | length == 1
+      - uid0_users.stdout_lines[0] == 'root'
+    fail_msg: >
+      Unexpected UID 0 account(s) found: {{ uid0_users.stdout_lines | join(', ') }}.
+      Only root should have UID 0.
+  tags: users

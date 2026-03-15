@@ -1,0 +1,6 @@
+---
+ssh_port: 2222
+ssh_allow_users:
+  - bpainter
+lan_subnet: "192.168.68.0/24"
+webserver_public: true

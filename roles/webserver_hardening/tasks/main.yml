@@ -1,0 +1,30 @@
+---
+- import_tasks: 01_update.yml
+  tags: update
+
+- import_tasks: 02_users.yml
+  tags: users
+
+- import_tasks: 03_ssh.yml
+  tags: ssh
+
+- import_tasks: 04_firewall.yml
+  tags: firewall
+
+- import_tasks: 05_fail2ban.yml
+  tags: fail2ban
+
+- import_tasks: 06_auditd.yml
+  tags: auditd
+
+- import_tasks: 07_kernel.yml
+  tags: kernel
+
+- import_tasks: 08_packages.yml
+  tags: packages
+
+- import_tasks: 09_apparmor.yml
+  tags: apparmor
+
+- import_tasks: 10_verify.yml
+  tags: verify

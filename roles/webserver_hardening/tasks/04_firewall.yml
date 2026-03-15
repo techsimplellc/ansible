@@ -1,0 +1,120 @@
+---
+# Distro-agnostic firewall configuration.
+# Debian family → UFW
+# RedHat family → firewalld
+# No LAN subnet allow rule — this is a public-facing VPS.
+
+# ── UFW (Debian/Ubuntu) ───────────────────────────────────────────────────────
+
+- name: Install UFW (Debian)
+  ansible.builtin.apt:
+    name: ufw
+    state: present
+  when: ansible_os_family == 'Debian'
+  tags: firewall
+
+- name: Set UFW default incoming policy to deny (Debian)
+  community.general.ufw:
+    direction: incoming
+    policy: deny
+  when: ansible_os_family == 'Debian'
+  tags: firewall
+
+- name: Set UFW default outgoing policy to allow (Debian)
+  community.general.ufw:
+    direction: outgoing
+    policy: allow
+  when: ansible_os_family == 'Debian'
+  tags: firewall
+
+- name: Allow SSH port {{ ssh_port }}/tcp (Debian/UFW)
+  community.general.ufw:
+    rule: allow
+    to_port: "{{ ssh_port }}"
+    proto: tcp
+    comment: "SSH"
+  when: ansible_os_family == 'Debian'
+  tags: firewall
+
+- name: Allow HTTP 80/tcp (Debian/UFW)
+  community.general.ufw:
+    rule: allow
+    to_port: "80"
+    proto: tcp
+    comment: "HTTP"
+  when: ansible_os_family == 'Debian'
+  tags: firewall
+
+- name: Allow HTTPS 443/tcp (Debian/UFW)
+  community.general.ufw:
+    rule: allow
+    to_port: "443"
+    proto: tcp
+    comment: "HTTPS"
+  when: ansible_os_family == 'Debian'
+  tags: firewall
+
+- name: Enable UFW (Debian)
+  community.general.ufw:
+    state: enabled
+  when: ansible_os_family == 'Debian'
+  tags: firewall
+
+# ── firewalld (RedHat/Rocky) ──────────────────────────────────────────────────
+
+- name: Install firewalld (RedHat)
+  ansible.builtin.dnf:
+    name: firewalld
+    state: present
+  when: ansible_os_family == 'RedHat'
+  tags: firewall
+
+- name: Enable and start firewalld (RedHat)
+  ansible.builtin.service:
+    name: firewalld
+    enabled: true
+    state: started
+  when: ansible_os_family == 'RedHat'
+  tags: firewall
+
+- name: Remove default ssh service from firewalld zone (RedHat)
+  ansible.posix.firewalld:
+    service: ssh
+    zone: public
+    permanent: true
+    state: disabled
+  when: ansible_os_family == 'RedHat'
+  tags: firewall
+
+- name: Allow SSH port {{ ssh_port }}/tcp (RedHat/firewalld)
+  ansible.posix.firewalld:
+    port: "{{ ssh_port }}/tcp"
+    zone: public
+    permanent: true
+    state: enabled
+  when: ansible_os_family == 'RedHat'
+  tags: firewall
+
+- name: Allow HTTP 80/tcp (RedHat/firewalld)
+  ansible.posix.firewalld:
+    port: "80/tcp"
+    zone: public
+    permanent: true
+    state: enabled
+  when: ansible_os_family == 'RedHat'
+  tags: firewall
+
+- name: Allow HTTPS 443/tcp (RedHat/firewalld)
+  ansible.posix.firewalld:
+    port: "443/tcp"
+    zone: public
+    permanent: true
+    state: enabled
+  when: ansible_os_family == 'RedHat'
+  tags: firewall
+
+- name: Reload firewalld to apply rules (RedHat)
+  ansible.builtin.command: firewall-cmd --reload
+  changed_when: true
+  when: ansible_os_family == 'RedHat'
+  tags: firewall

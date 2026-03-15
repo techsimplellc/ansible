@@ -1,0 +1,63 @@
+---
+- name: Deploy SSH login banner
+  ansible.builtin.copy:
+    src: banner.txt
+    dest: /etc/ssh/banner.txt
+    owner: root
+    group: root
+    mode: "0644"
+  tags: ssh
+
+- name: Back up original sshd_config (first run only)
+  ansible.builtin.copy:
+    src: /etc/ssh/sshd_config
+    dest: /etc/ssh/sshd_config.bak
+    remote_src: true
+    force: false
+  tags: ssh
+
+- name: Deploy hardened sshd_config
+  ansible.builtin.template:
+    src: sshd_config.j2
+    dest: /etc/ssh/sshd_config
+    owner: root
+    group: root
+    mode: "0600"
+    validate: /usr/sbin/sshd -t -f %s
+  notify: Restart SSH
+  tags: ssh
+
+# Pre-open the new SSH port in UFW before restarting sshd so we don't
+# lock ourselves out. The full firewall setup happens in 04_firewall.yml.
+- name: Allow new SSH port before sshd restart (Debian/UFW)
+  community.general.ufw:
+    rule: allow
+    to_port: "{{ ssh_port }}"
+    proto: tcp
+    comment: "SSH post-hardening port"
+  when: ansible_os_family == 'Debian'
+  tags: ssh
+
+- name: Flush handlers to restart SSH immediately
+  ansible.builtin.meta: flush_handlers
+  tags: ssh
+
+- name: Wait for SSH to come back up on new port
+  ansible.builtin.wait_for:
+    host: "{{ ansible_host }}"
+    port: "{{ ssh_port }}"
+    delay: 5
+    timeout: 30
+    state: started
+  delegate_to: localhost
+  become: false
+  tags: ssh
+
+- name: Set ansible_port to new SSH port for remaining tasks
+  ansible.builtin.set_fact:
+    ansible_port: "{{ ssh_port }}"
+  tags: ssh
+
+- name: Reset SSH connection to use new port
+  ansible.builtin.meta: reset_connection
+  tags: ssh
