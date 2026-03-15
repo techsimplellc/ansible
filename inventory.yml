@@ -19,3 +19,9 @@ all:
       hosts:
         dev1:
           ansible_host: 192.168.68.21
+    webservers:
+      hosts:
+        # Painter Precision - painterprecision.com - 144.202.87.7
+        painterprecision:
+          ansible_host: 144.202.87.7
+          ansible_port: 22
