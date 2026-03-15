@@ -1,0 +1,43 @@
+---
+- name: Install nginx (Debian)
+  ansible.builtin.apt:
+    name: nginx
+    state: present
+    update_cache: true
+  when: ansible_os_family == 'Debian'
+  tags: nginx_install
+
+- name: Install nginx (RedHat)
+  ansible.builtin.dnf:
+    name: nginx
+    state: present
+    enablerepo: epel
+  when: ansible_os_family == 'RedHat'
+  tags: nginx_install
+
+- name: Enable and start nginx service
+  ansible.builtin.service:
+    name: nginx
+    enabled: true
+    state: started
+  tags: nginx_install
+
+# Debian ships sites-available/sites-enabled by default.
+# RHEL/Rocky does not — create them so vhost tasks work uniformly.
+- name: Ensure /etc/nginx/sites-available exists
+  ansible.builtin.file:
+    path: /etc/nginx/sites-available
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  tags: nginx_install
+
+- name: Ensure /etc/nginx/sites-enabled exists
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  tags: nginx_install

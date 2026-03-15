@@ -1,0 +1,37 @@
+---
+# =============================================================================
+# setup_nginx.yml — Install and configure nginx on web servers
+# Target group: webservers (e.g. painterprecision.com / 144.202.87.7)
+#
+# Prerequisites:
+#   - harden_webserver.yml must have run first (SSH on port 2222, UFW open)
+#   - Port 80 and 443 must be open in the firewall (handled by 04_firewall.yml)
+#
+# Vhost configuration:
+#   Define nginx_vhosts in host_vars or pass via -e. Example:
+#
+#   nginx_vhosts:
+#     - domain: painterprecision.com
+#       document_root: /var/www/painterprecision.com
+#
+#   SSL certs default to /etc/letsencrypt/live/<domain>/{fullchain,privkey}.pem
+#   Run setup_letsencrypt.yml after this playbook to provision certs.
+#
+# Run:
+#   ansible-playbook playbooks/setup_nginx.yml \
+#     -i inventory.yml --limit painterprecision --ask-vault-pass --become
+#
+# Tag-scoped runs:
+#   --tags nginx_install     — install only
+#   --tags nginx_configure   — deploy nginx.conf + dhparam only
+#   --tags nginx_vhosts      — deploy/update vhosts only
+# =============================================================================
+
+- name: Install and configure nginx on web servers
+  hosts: webservers
+  become: true
+  gather_facts: true
+  vars_files:
+    - "{{ playbook_dir }}/../group_vars/all/vars.yml"
+  roles:
+    - nginx

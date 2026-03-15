@@ -1,0 +1,52 @@
+# {{ item.domain }} — managed by Ansible
+# Role: nginx / 03_vhosts.yml
+# Do not edit manually
+
+# HTTP → HTTPS redirect
+server {
+  listen 80;
+  listen [::]:80;
+  server_name {{ item.domain }} www.{{ item.domain }};
+
+  # Let's Encrypt ACME challenge (DNS-01 is primary but keep webroot
+  # for compatibility)
+  location /.well-known/acme-challenge/ {
+    root {{ item.document_root }};
+  }
+
+  location / {
+    return 301 https://$host$request_uri;
+  }
+}
+
+# HTTPS
+server {
+  listen 443 ssl;
+  listen [::]:443 ssl;
+  http2 on;
+  server_name {{ item.domain }} www.{{ item.domain }};
+
+  root {{ item.document_root }};
+  index index.html index.htm index.php;
+
+  # SSL — certs provided by Let's Encrypt (certbot)
+  ssl_certificate     {{ item.ssl_cert | default('/etc/letsencrypt/live/' + item.domain + '/fullchain.pem') }};
+  ssl_certificate_key {{ item.ssl_key  | default('/etc/letsencrypt/live/' + item.domain + '/privkey.pem') }};
+
+  # Rate limiting
+  limit_req zone=default burst=20 nodelay;
+
+  # Per-vhost logging
+  access_log /var/log/nginx/{{ item.domain }}.access.log;
+  error_log  /var/log/nginx/{{ item.domain }}.error.log;
+
+  # Deny hidden files
+  location ~ /\. {
+    deny all;
+    return 404;
+  }
+
+  location / {
+    try_files $uri $uri/ =404;
+  }
+}

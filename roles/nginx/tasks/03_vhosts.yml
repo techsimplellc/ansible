@@ -1,0 +1,41 @@
+---
+- name: Create document root for {{ item.domain }}
+  ansible.builtin.file:
+    path: "{{ item.document_root }}"
+    state: directory
+    owner: "{{ 'www-data' if ansible_os_family == 'Debian' else 'nginx' }}"
+    group: "{{ 'www-data' if ansible_os_family == 'Debian' else 'nginx' }}"
+    mode: "0755"
+  loop: "{{ nginx_vhosts }}"
+  when: nginx_vhosts | length > 0
+  tags: nginx_vhosts
+
+- name: Deploy vhost config for {{ item.domain }}
+  ansible.builtin.template:
+    src: vhost.conf.j2
+    dest: "/etc/nginx/sites-available/{{ item.domain }}.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ nginx_vhosts }}"
+  when: nginx_vhosts | length > 0
+  notify: Reload nginx
+  tags: nginx_vhosts
+
+- name: Enable vhost for {{ item.domain }}
+  ansible.builtin.file:
+    src: "/etc/nginx/sites-available/{{ item.domain }}.conf"
+    dest: "/etc/nginx/sites-enabled/{{ item.domain }}.conf"
+    state: link
+  loop: "{{ nginx_vhosts }}"
+  when: nginx_vhosts | length > 0
+  notify: Reload nginx
+  tags: nginx_vhosts
+
+- name: Validate nginx configuration after vhost changes
+  ansible.builtin.command: nginx -t
+  register: nginx_vhost_validate
+  changed_when: false
+  failed_when: nginx_vhost_validate.rc != 0
+  when: nginx_vhosts | length > 0
+  tags: nginx_vhosts
