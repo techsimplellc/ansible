@@ -24,4 +24,4 @@ all:
         # Painter Precision - painterprecision.com - 144.202.87.7
         painterprecision:
           ansible_host: 144.202.87.7
-          ansible_port: 22
+          ansible_port: 2222
