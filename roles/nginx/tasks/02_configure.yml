@@ -16,9 +16,6 @@
   notify: Reload nginx
   tags: nginx_configure
 
-- name: Validate nginx configuration
-  ansible.builtin.command: nginx -t
-  register: nginx_validate
-  changed_when: false
-  failed_when: nginx_validate.rc != 0
-  tags: nginx_configure
+# Validation intentionally omitted here — nginx.conf includes sites-enabled/*
+# so nginx -t loads all vhost configs. Vhosts are cert-conditional and deployed
+# in 03_vhosts.yml, which runs the final nginx -t after everything is in place.

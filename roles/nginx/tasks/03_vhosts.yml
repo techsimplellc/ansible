@@ -61,10 +61,9 @@
   when: nginx_vhosts | length > 0
   tags: nginx_vhosts
 
-- name: Validate nginx configuration after vhost changes
+- name: Validate final nginx configuration
   ansible.builtin.command: nginx -t
   register: nginx_vhost_validate
   changed_when: false
   failed_when: nginx_vhost_validate.rc != 0
-  when: nginx_vhosts | length > 0
   tags: nginx_vhosts
