@@ -197,6 +197,14 @@ echo -e "  Playbook : ${GREEN}${SELECTED_PLAYBOOK}${RESET}"
 echo -e "  Tag      : ${GREEN}${TAG_LABEL}${RESET}"
 echo -e "  Target   : ${GREEN}${TARGET_LABEL}${RESET}"
 echo -e "  Inventory: ${GREEN}${INVENTORY}${RESET}"
+
+CMD_DISPLAY="ansible-playbook ${PLAYBOOK_DIR}/${SELECTED_PLAYBOOK} -i ${INVENTORY}"
+[[ -n "$LIMIT_ARG" ]] && CMD_DISPLAY+=" $LIMIT_ARG"
+[[ -n "$TAG_ARG"   ]] && CMD_DISPLAY+=" $TAG_ARG"
+CMD_DISPLAY+=" --vault-password-file <vault-tmp> --become"
+
+echo ""
+echo -e "  Command  : ${CYAN}${CMD_DISPLAY}${RESET}"
 echo ""
 read -rp "$(echo -e "${BOLD}Proceed? [y/N]: ${RESET}")" confirm
 
