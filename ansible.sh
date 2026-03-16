@@ -264,7 +264,7 @@ for group, data in inv.items():
       CMD_DISPLAY="ansible-playbook ${PLAYBOOK_DIR}/${SELECTED_PLAYBOOK} -i ${INVENTORY}"
       [[ -n "$LIMIT_ARG" ]] && CMD_DISPLAY+=" $LIMIT_ARG"
       [[ -n "$TAG_ARG"   ]] && CMD_DISPLAY+=" $TAG_ARG"
-      CMD_DISPLAY+=" --vault-password-file <vault-tmp> --become"
+      CMD_DISPLAY+=" --ask-vault-pass --become"
 
       echo ""
       echo -e "  Command  : ${CYAN}${CMD_DISPLAY}${RESET}"
