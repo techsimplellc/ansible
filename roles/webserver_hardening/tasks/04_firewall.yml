@@ -3,6 +3,8 @@
 # Debian family → UFW
 # RedHat family → firewalld
 # No LAN subnet allow rule — this is a public-facing VPS.
+# Port 80 restricted to Cloudflare IP ranges only — prevents bypass of Cloudflare proxy.
+# Port 443 not opened — Cloudflare Flexible mode connects to origin on port 80 only.
 
 # ── UFW (Debian/Ubuntu) ───────────────────────────────────────────────────────
 
@@ -36,21 +38,25 @@
   when: ansible_os_family == 'Debian'
   tags: firewall
 
-- name: Allow HTTP 80/tcp (Debian/UFW)
+- name: Allow HTTP 80/tcp from Cloudflare IPv4 ranges (Debian/UFW)
   community.general.ufw:
     rule: allow
+    from_ip: "{{ item }}"
     to_port: "80"
     proto: tcp
-    comment: "HTTP"
+    comment: "Cloudflare HTTP"
+  loop: "{{ cloudflare_ipv4_ranges }}"
   when: ansible_os_family == 'Debian'
   tags: firewall
 
-- name: Allow HTTPS 443/tcp (Debian/UFW)
+- name: Allow HTTP 80/tcp from Cloudflare IPv6 ranges (Debian/UFW)
   community.general.ufw:
     rule: allow
-    to_port: "443"
+    from_ip: "{{ item }}"
+    to_port: "80"
     proto: tcp
-    comment: "HTTPS"
+    comment: "Cloudflare HTTP"
+  loop: "{{ cloudflare_ipv6_ranges }}"
   when: ansible_os_family == 'Debian'
   tags: firewall
 
@@ -95,21 +101,23 @@
   when: ansible_os_family == 'RedHat'
   tags: firewall
 
-- name: Allow HTTP 80/tcp (RedHat/firewalld)
+- name: Allow HTTP 80/tcp from Cloudflare IPv4 ranges (RedHat/firewalld)
   ansible.posix.firewalld:
-    port: "80/tcp"
+    rich_rule: "rule family='ipv4' source address='{{ item }}' port port='80' protocol='tcp' accept"
     zone: public
     permanent: true
     state: enabled
+  loop: "{{ cloudflare_ipv4_ranges }}"
   when: ansible_os_family == 'RedHat'
   tags: firewall
 
-- name: Allow HTTPS 443/tcp (RedHat/firewalld)
+- name: Allow HTTP 80/tcp from Cloudflare IPv6 ranges (RedHat/firewalld)
   ansible.posix.firewalld:
-    port: "443/tcp"
+    rich_rule: "rule family='ipv6' source address='{{ item }}' port port='80' protocol='tcp' accept"
     zone: public
     permanent: true
     state: enabled
+  loop: "{{ cloudflare_ipv6_ranges }}"
   when: ansible_os_family == 'RedHat'
   tags: firewall
 

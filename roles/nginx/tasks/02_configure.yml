@@ -1,12 +1,5 @@
 ---
-# Run once — 2048-bit DH params for Forward Secrecy
-- name: Generate DH parameters (2048-bit) if not present
-  ansible.builtin.command:
-    cmd: openssl dhparam -out /etc/nginx/dhparam.pem 2048
-    creates: /etc/nginx/dhparam.pem
-  tags: nginx_configure
-
-- name: Deploy hardened nginx.conf
+- name: Deploy nginx.conf
   ansible.builtin.template:
     src: nginx.conf.j2
     dest: /etc/nginx/nginx.conf
@@ -17,5 +10,5 @@
   tags: nginx_configure
 
 # Validation intentionally omitted here — nginx.conf includes sites-enabled/*
-# so nginx -t loads all vhost configs. Vhosts are cert-conditional and deployed
-# in 03_vhosts.yml, which runs the final nginx -t after everything is in place.
+# so nginx -t loads all vhost configs. Vhosts are deployed in 03_vhosts.yml,
+# which runs the final nginx -t after everything is in place.
