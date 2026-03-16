@@ -1,8 +1,9 @@
 # {{ item.domain }} — managed by Ansible
 # Role: nginx / 03_vhosts.yml
 # Do not edit manually
+# SSL active: {{ cert_exists }}
 
-# HTTP → HTTPS redirect
+# HTTP — ACME challenge passthrough + redirect to HTTPS (when cert exists)
 server {
   listen 80;
   listen [::]:80;
@@ -15,10 +16,16 @@ server {
   }
 
   location / {
+{% if cert_exists %}
     return 301 https://$host$request_uri;
+{% else %}
+    # Cert not yet issued — serving HTTP only until setup_letsencrypt.yml runs
+    try_files $uri $uri/ =404;
+{% endif %}
   }
 }
 
+{% if cert_exists %}
 # HTTPS
 server {
   listen 443 ssl;
@@ -50,3 +57,4 @@ server {
     try_files $uri $uri/ =404;
   }
 }
+{% endif %}

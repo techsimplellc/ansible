@@ -1,4 +1,15 @@
 ---
+# Check cert existence first so the template can conditionally include
+# the SSL server block. Certs are absent before setup_letsencrypt.yml runs;
+# nginx starts HTTP-only and the SSL block is activated on the next run.
+- name: Stat SSL cert for {{ item.domain }}
+  ansible.builtin.stat:
+    path: "/etc/letsencrypt/live/{{ item.domain }}/fullchain.pem"
+  loop: "{{ nginx_vhosts }}"
+  register: vhost_certs
+  when: nginx_vhosts | length > 0
+  tags: nginx_vhosts
+
 - name: Create document root for {{ item.domain }}
   ansible.builtin.file:
     path: "{{ item.document_root }}"
@@ -17,6 +28,11 @@
     owner: root
     group: root
     mode: "0644"
+  vars:
+    cert_exists: >-
+      {{ (vhost_certs.results
+          | selectattr('item.domain', 'equalto', item.domain)
+          | first).stat.exists | default(false) }}
   loop: "{{ nginx_vhosts }}"
   when: nginx_vhosts | length > 0
   notify: Reload nginx
@@ -30,6 +46,19 @@
   loop: "{{ nginx_vhosts }}"
   when: nginx_vhosts | length > 0
   notify: Reload nginx
+  tags: nginx_vhosts
+
+- name: Report SSL status per vhost
+  ansible.builtin.debug:
+    msg: >-
+      {{ item.domain }}: SSL
+      {{ 'ACTIVE — full HTTPS vhost deployed' if
+         (vhost_certs.results
+          | selectattr('item.domain', 'equalto', item.domain)
+          | first).stat.exists | default(false)
+         else 'NOT YET — HTTP-only vhost deployed. Run setup_letsencrypt.yml then re-run this playbook.' }}
+  loop: "{{ nginx_vhosts }}"
+  when: nginx_vhosts | length > 0
   tags: nginx_vhosts
 
 - name: Validate nginx configuration after vhost changes
