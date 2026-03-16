@@ -1,5 +1,5 @@
 ---
-- name: Create document root for {{ item.domain }}
+- name: Create document root for each vhost
   ansible.builtin.file:
     path: "{{ item.document_root }}"
     state: directory
@@ -10,7 +10,7 @@
   when: nginx_vhosts | length > 0
   tags: nginx_vhosts
 
-- name: Deploy vhost config for {{ item.domain }}
+- name: Deploy vhost configs
   ansible.builtin.template:
     src: vhost.conf.j2
     dest: "/etc/nginx/sites-available/{{ item.domain }}.conf"
@@ -22,7 +22,7 @@
   notify: Reload nginx
   tags: nginx_vhosts
 
-- name: Enable vhost for {{ item.domain }}
+- name: Enable vhosts
   ansible.builtin.file:
     src: "/etc/nginx/sites-available/{{ item.domain }}.conf"
     dest: "/etc/nginx/sites-enabled/{{ item.domain }}.conf"
