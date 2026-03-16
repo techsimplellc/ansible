@@ -1,8 +1,4 @@
 ---
-letsencrypt_domains:
-  - domain: painterprecision.com
-    email: admin@painterprecision.com   # replace with real address
-
 nginx_vhosts:
   - domain: painterprecision.com
     document_root: /var/www/painterprecision.com

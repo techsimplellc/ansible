@@ -14,8 +14,9 @@
 #     - domain: painterprecision.com
 #       document_root: /var/www/painterprecision.com
 #
-#   SSL certs default to /etc/letsencrypt/live/<domain>/{fullchain,privkey}.pem
-#   Run setup_letsencrypt.yml after this playbook to provision certs.
+#   SSL certs: place fullchain.pem and privkey.pem under
+#   /etc/letsencrypt/live/<domain>/ (or override via ssl_cert/ssl_key per vhost).
+#   Re-run this playbook after certs are in place to activate the HTTPS vhost.
 #
 # Run:
 #   ansible-playbook playbooks/setup_nginx.yml \
