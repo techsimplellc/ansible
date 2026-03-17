@@ -4,11 +4,12 @@ update_cloudflare_ips.py — Refresh Cloudflare IP ranges in Ansible repo files.
 
 Fetches the current IPv4/IPv6 ranges from Cloudflare's official endpoints,
 diffs against the repo, commits if changed, and optionally re-runs the
-affected playbooks.
+affected playbook.
 
 Files updated:
   group_vars/webservers/vars.yml       cloudflare_ipv4_ranges + cloudflare_ipv6_ranges
-  roles/hardening/tasks/04_ufw.yml     srv1 Cloudflare allowlist loop (IPv4 only)
+                                       (reference data for nginx real IP restoration)
+  roles/hardening/tasks/04_ufw.yml     srv1 Cloudflare UFW allowlist loop (IPv4 only)
 
 Usage:
   python3 scripts/update_cloudflare_ips.py
@@ -33,18 +34,9 @@ WEBSERVERS_VARS  = REPO_ROOT / "group_vars/webservers/vars.yml"
 HARDENING_UFW    = REPO_ROOT / "roles/hardening/tasks/04_ufw.yml"
 
 # Playbooks to re-run after a change, if a vault password file is provided.
+# Only srv1 is listed — painterprecision UFW no longer uses Cloudflare IP ranges.
 # Each entry: (description, ansible-playbook args list)
 PLAYBOOKS = [
-    (
-        "painterprecision — firewall (webserver_hardening)",
-        [
-            "ansible-playbook", "playbooks/harden_webserver.yml",
-            "-i", "inventory.yml",
-            "--limit", "painterprecision",
-            "--tags", "firewall",
-            "--become",
-        ],
-    ),
     (
         "srv1 — UFW (hardening)",
         [
@@ -177,8 +169,6 @@ def main():
     if not args.vault_password_file:
         print("\nSkipping playbook re-run (no --vault-password-file provided).")
         print("Apply changes manually:")
-        print("  ansible-playbook playbooks/harden_webserver.yml -i inventory.yml "
-              "--limit painterprecision --tags firewall --ask-vault-pass --become")
         print("  ansible-playbook playbooks/harden.yml -i inventory.yml "
               "--limit srv1 --tags ufw --ask-vault-pass --become")
         sys.exit(0)
@@ -196,7 +186,7 @@ def main():
             print(f"ERROR: playbook failed — {description}", file=sys.stderr)
             sys.exit(1)
 
-    print("\nDone — Cloudflare IP ranges refreshed and applied to all hosts.")
+    print("\nDone — Cloudflare IP ranges refreshed and applied to srv1.")
 
 
 if __name__ == "__main__":

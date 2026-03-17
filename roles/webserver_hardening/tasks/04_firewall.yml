@@ -3,7 +3,7 @@
 # Debian family → UFW
 # RedHat family → firewalld
 # No LAN subnet allow rule — this is a public-facing VPS.
-# Port 80 restricted to Cloudflare IP ranges only — prevents bypass of Cloudflare proxy.
+# Port 80 open to all — Cloudflare proxies the site but direct access is allowed.
 # Port 443 not opened — Cloudflare Flexible mode connects to origin on port 80 only.
 
 # ── UFW (Debian/Ubuntu) ───────────────────────────────────────────────────────
@@ -38,25 +38,12 @@
   when: ansible_os_family == 'Debian'
   tags: firewall
 
-- name: Allow HTTP 80/tcp from Cloudflare IPv4 ranges (Debian/UFW)
+- name: Allow HTTP 80/tcp (Debian/UFW)
   community.general.ufw:
     rule: allow
-    from_ip: "{{ item }}"
     to_port: "80"
     proto: tcp
-    comment: "Cloudflare HTTP"
-  loop: "{{ cloudflare_ipv4_ranges }}"
-  when: ansible_os_family == 'Debian'
-  tags: firewall
-
-- name: Allow HTTP 80/tcp from Cloudflare IPv6 ranges (Debian/UFW)
-  community.general.ufw:
-    rule: allow
-    from_ip: "{{ item }}"
-    to_port: "80"
-    proto: tcp
-    comment: "Cloudflare HTTP"
-  loop: "{{ cloudflare_ipv6_ranges }}"
+    comment: "HTTP"
   when: ansible_os_family == 'Debian'
   tags: firewall
 
@@ -101,23 +88,12 @@
   when: ansible_os_family == 'RedHat'
   tags: firewall
 
-- name: Allow HTTP 80/tcp from Cloudflare IPv4 ranges (RedHat/firewalld)
+- name: Allow HTTP 80/tcp (RedHat/firewalld)
   ansible.posix.firewalld:
-    rich_rule: "rule family='ipv4' source address='{{ item }}' port port='80' protocol='tcp' accept"
+    port: "80/tcp"
     zone: public
     permanent: true
     state: enabled
-  loop: "{{ cloudflare_ipv4_ranges }}"
-  when: ansible_os_family == 'RedHat'
-  tags: firewall
-
-- name: Allow HTTP 80/tcp from Cloudflare IPv6 ranges (RedHat/firewalld)
-  ansible.posix.firewalld:
-    rich_rule: "rule family='ipv6' source address='{{ item }}' port port='80' protocol='tcp' accept"
-    zone: public
-    permanent: true
-    state: enabled
-  loop: "{{ cloudflare_ipv6_ranges }}"
   when: ansible_os_family == 'RedHat'
   tags: firewall
 
