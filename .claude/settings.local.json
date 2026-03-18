@@ -4,7 +4,8 @@
       "Bash(ansible:*)",
       "Bash(ssh:*)",
       "Bash(ansible-galaxy collection:*)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(chmod:*)"
     ]
   }
 }

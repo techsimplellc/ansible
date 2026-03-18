@@ -1,0 +1,86 @@
+---
+# =============================================================================
+# ufw.yml — Install and manage UFW on homelab servers
+#
+# Applies the baseline UFW policy on farm and dev hosts:
+#   - Default deny incoming / allow outgoing / deny routed
+#   - Allow SSH 2222/tcp from LAN
+#   - Allow all traffic from LAN subnet
+#   - Enable UFW
+#   - srv1 only: allow Cloudflare IPv4 ranges to port 443/tcp (NPM)
+#
+# Safe to re-run at any time — all tasks are idempotent.
+# Cloudflare IP list lives in group_vars/all/vars.yml and is kept current
+# by scripts/update_cloudflare_ips.py (run monthly via cron).
+#
+# Run (all servers):
+#   ansible-playbook playbooks/ufw.yml -i inventory.yml \
+#     --ask-vault-pass --become
+#
+# Run (single server):
+#   ansible-playbook playbooks/ufw.yml -i inventory.yml \
+#     --limit srv1 --ask-vault-pass --become
+# =============================================================================
+
+- name: Install and configure UFW on homelab servers
+  hosts: "{{ target | default('farm:dev') }}"
+  gather_facts: true
+  become: true
+
+  tasks:
+    - name: Install UFW
+      ansible.builtin.apt:
+        name: ufw
+        state: present
+      tags: ufw
+
+    - name: Set UFW default incoming policy to deny
+      community.general.ufw:
+        direction: incoming
+        policy: deny
+      tags: ufw
+
+    - name: Set UFW default outgoing policy to allow
+      community.general.ufw:
+        direction: outgoing
+        policy: allow
+      tags: ufw
+
+    - name: Set UFW default routed policy to deny
+      community.general.ufw:
+        direction: routed
+        policy: deny
+      tags: ufw
+
+    - name: Allow SSH on port 2222 from LAN
+      community.general.ufw:
+        rule: allow
+        from_ip: "{{ lan_subnet }}"
+        to_port: "2222"
+        proto: tcp
+        comment: "SSH LAN only"
+      tags: ufw
+
+    - name: Allow all traffic from LAN subnet
+      community.general.ufw:
+        rule: allow
+        from_ip: "{{ lan_subnet }}"
+        comment: "LAN trusted subnet"
+      tags: ufw
+
+    - name: Enable UFW
+      community.general.ufw:
+        state: enabled
+      tags: ufw
+
+    # srv1 only — Cloudflare IP allowlist for NPM (port 443)
+    - name: Allow Cloudflare IPs to port 443
+      community.general.ufw:
+        rule: allow
+        from_ip: "{{ item }}"
+        to_port: "443"
+        proto: tcp
+        comment: "Cloudflare"
+      loop: "{{ cloudflare_ipv4_ranges }}"
+      when: inventory_hostname == 'srv1'
+      tags: ufw

@@ -47,6 +47,7 @@
           - n8n_encryption_key is defined and n8n_encryption_key | length > 0
           - calcom_db_password is defined and calcom_db_password | length > 0
           - calcom_nextauth_secret is defined and calcom_nextauth_secret | length > 0
+          - calendso_encryption_key is defined and calendso_encryption_key | length > 0
           - espocrm_db_password is defined and espocrm_db_password | length > 0
           - espocrm_admin_password is defined and espocrm_admin_password | length > 0
         fail_msg: >

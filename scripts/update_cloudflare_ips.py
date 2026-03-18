@@ -7,9 +7,10 @@ diffs against the repo, commits if changed, and optionally re-runs the
 affected playbook.
 
 Files updated:
+  group_vars/all/vars.yml              cloudflare_ipv4_ranges
+                                       (srv1 UFW allowlist — port 443/tcp)
   group_vars/webservers/vars.yml       cloudflare_ipv4_ranges + cloudflare_ipv6_ranges
                                        (reference data for nginx real IP restoration)
-  roles/hardening/tasks/04_ufw.yml     srv1 Cloudflare UFW allowlist loop (IPv4 only)
 
 Usage:
   python3 scripts/update_cloudflare_ips.py
@@ -30,20 +31,19 @@ REPO_ROOT   = Path(__file__).resolve().parent.parent
 CF_IPV4_URL = "https://www.cloudflare.com/ips-v4"
 CF_IPV6_URL = "https://www.cloudflare.com/ips-v6"
 
+ALL_VARS         = REPO_ROOT / "group_vars/all/vars.yml"
 WEBSERVERS_VARS  = REPO_ROOT / "group_vars/webservers/vars.yml"
-HARDENING_UFW    = REPO_ROOT / "roles/hardening/tasks/04_ufw.yml"
 
 # Playbooks to re-run after a change, if a vault password file is provided.
 # Only srv1 is listed — painterprecision UFW no longer uses Cloudflare IP ranges.
 # Each entry: (description, ansible-playbook args list)
 PLAYBOOKS = [
     (
-        "srv1 — UFW (hardening)",
+        "srv1 — UFW",
         [
-            "ansible-playbook", "playbooks/harden.yml",
+            "ansible-playbook", "playbooks/ufw.yml",
             "-i", "inventory.yml",
             "--limit", "srv1",
-            "--tags", "ufw",
             "--become",
         ],
     ),
@@ -80,21 +80,14 @@ def update_webservers_vars(content: str, ipv4: list, ipv6: list) -> str:
     return content
 
 
-def update_hardening_ufw(content: str, ipv4: list) -> str:
-    """Replace the Cloudflare IPv4 loop under 'Allow Cloudflare IPs to port 443'."""
-    pattern = (
-        r"(  loop:\n)"
-        r"((?:    - \S+\n)+)"
-        r"(  when: inventory_hostname == 'srv1')"
-    )
+def update_all_vars(content: str, ipv4: list) -> str:
+    """Replace the cloudflare_ipv4_ranges list in group_vars/all/vars.yml."""
+    pattern = r"(cloudflare_ipv4_ranges:\n)((?:  - \S+\n)+)"
     if not re.search(pattern, content):
-        print(f"  WARNING: could not locate Cloudflare loop block in {HARDENING_UFW.name}",
+        print(f"  WARNING: could not locate 'cloudflare_ipv4_ranges' block in {ALL_VARS.name}",
               file=sys.stderr)
         return content
-    replacement = (
-        f"  loop:\n{yaml_list(ipv4, indent=4)}\n"
-        f"  when: inventory_hostname == 'srv1'"
-    )
+    replacement = f"cloudflare_ipv4_ranges:\n{yaml_list(ipv4, indent=2)}\n"
     return re.sub(pattern, replacement, content)
 
 
@@ -127,8 +120,8 @@ def main():
 
     # ── Update files ─────────────────────────────────────────────────────────
     updates = [
+        (ALL_VARS,        lambda c: update_all_vars(c, ipv4)),
         (WEBSERVERS_VARS, lambda c: update_webservers_vars(c, ipv4, ipv6)),
-        (HARDENING_UFW,   lambda c: update_hardening_ufw(c, ipv4)),
     ]
 
     changed = []
@@ -169,8 +162,8 @@ def main():
     if not args.vault_password_file:
         print("\nSkipping playbook re-run (no --vault-password-file provided).")
         print("Apply changes manually:")
-        print("  ansible-playbook playbooks/harden.yml -i inventory.yml "
-              "--limit srv1 --tags ufw --ask-vault-pass --become")
+        print("  ansible-playbook playbooks/ufw.yml -i inventory.yml "
+              "--limit srv1 --ask-vault-pass --become")
         sys.exit(0)
 
     vault_file = Path(args.vault_password_file).expanduser()
@@ -186,7 +179,7 @@ def main():
             print(f"ERROR: playbook failed — {description}", file=sys.stderr)
             sys.exit(1)
 
-    print("\nDone — Cloudflare IP ranges refreshed and applied to srv1.")
+    print("\nDone — Cloudflare IP ranges refreshed and applied.")
 
 
 if __name__ == "__main__":
