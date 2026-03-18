@@ -16,6 +16,7 @@ services:
     container_name: calcom
     restart: unless-stopped
     environment:
+      GOOGLE_API_CREDENTIALS: '{"web":{"client_id":"{{ calcom_google_client_id }}","client_secret":"{{ calcom_google_client_secret }}","redirect_uris":["https://cal.techsimple.dev/api/integrations/googlecalendar/callback"]}}'
       CALENDSO_ENCRYPTION_KEY: "{{calendso_encryption_key}}"
       # Database
       DATABASE_URL: "postgresql://calcom:{{ calcom_db_password }}@postgres-calcom:5432/calcom"

@@ -13,6 +13,14 @@ status: active
 
 # Cal.com 502 Troubleshooting — `cal.techsimple.dev`
 
+## Google Credentials
+
+| key: value |
+|---|
+| calcom_google_client_id: REDACTED_GOOGLE_CLIENT_ID |
+| calcom_google_client_secret: REDACTED_GOOGLE_CLIENT_SECRET |
+| redirect_uris: https://cal.techsimple.dev/api/integrations/googlecalendar/callback |
+
 ## Architecture Overview
 
 ```
