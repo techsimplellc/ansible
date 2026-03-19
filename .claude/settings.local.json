@@ -5,7 +5,11 @@
       "Bash(ssh:*)",
       "Bash(ansible-galaxy collection:*)",
       "Bash(cd:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(gh repo:*)",
+      "Bash(gh auth:*)",
+      "Bash(gh search:*)",
+      "Bash(gh api:*)"
     ]
   }
 }
