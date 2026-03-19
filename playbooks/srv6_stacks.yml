@@ -160,6 +160,7 @@
       ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
       vars:
         stack_name: postgres-paperless
+      tags: postgres-paperless
 
     - name: Wait for postgres-paperless to be ready
       ansible.builtin.wait_for:
@@ -173,6 +174,7 @@
       ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
       vars:
         stack_name: paperless
+      tags: paperless
 
     - name: Wait for Paperless-ngx to be ready
       ansible.builtin.wait_for:
@@ -186,17 +188,20 @@
       ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
       vars:
         stack_name: paperless-ai
+      tags: paperless-ai
 
     - name: Deploy paperless-gpt stack
       ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
       vars:
         stack_name: paperless-gpt
+      tags: paperless-gpt
 
     # ── Authentik SSO stack ───────────────────────────────────────────────────
     - name: Deploy postgres-authentik stack
       ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
       vars:
         stack_name: postgres-authentik
+      tags: postgres-authentik
 
     - name: Wait for postgres-authentik to be ready
       ansible.builtin.wait_for:
@@ -210,6 +215,7 @@
       ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
       vars:
         stack_name: authentik
+      tags: authentik
 
     - name: Wait for Authentik to be ready
       ansible.builtin.wait_for:
@@ -242,6 +248,7 @@
       ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
       vars:
         stack_name: postgres-simple-office
+      tags: postgres-simple-office
 
     - name: Wait for postgres-simple-office to be ready
       ansible.builtin.wait_for:
@@ -255,11 +262,13 @@
       ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
       vars:
         stack_name: redis-simple-office
+      tags: redis-simple-office
 
     - name: Deploy onlyoffice-so stack
       ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
       vars:
         stack_name: onlyoffice-so
+      tags: onlyoffice-so
 
     # NOTE: Comment out the two tasks below until Authentik OIDC client is configured
     #       and so_oidc_client_id / so_oidc_client_secret are added to vault.
@@ -267,8 +276,10 @@
       ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
       vars:
         stack_name: simple-office-api
+      tags: simple-office-api
 
     - name: Deploy simple-office-web stack
       ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
       vars:
         stack_name: simple-office-web
+      tags: simple-office-web

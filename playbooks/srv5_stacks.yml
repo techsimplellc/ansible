@@ -87,6 +87,7 @@
       ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
       vars:
         stack_name: ollama
+      tags: ollama
 
     - name: Wait for Ollama API to be ready
       ansible.builtin.wait_for:
@@ -100,3 +101,4 @@
       ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
       vars:
         stack_name: anythingllm
+      tags: anythingllm

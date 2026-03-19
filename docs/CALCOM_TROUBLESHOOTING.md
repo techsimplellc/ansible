@@ -17,8 +17,8 @@ status: active
 
 | key: value |
 |---|
-| calcom_google_client_id: REDACTED_GOOGLE_CLIENT_ID |
-| calcom_google_client_secret: REDACTED_GOOGLE_CLIENT_SECRET |
+| calcom_google_client_id: ** Look in secrets vault ** |
+| calcom_google_client_secret: ** Look in secrets vault ** |
 | redirect_uris: https://cal.techsimple.dev/api/integrations/googlecalendar/callback |
 
 ## Architecture Overview

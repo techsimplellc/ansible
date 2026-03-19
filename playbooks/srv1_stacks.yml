@@ -56,18 +56,22 @@
       ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
       vars:
         stack_name: cloudflared
+      tags: cloudflared
 
     - name: Deploy Nginx Proxy Manager stack
       ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
       vars:
         stack_name: npm
+      tags: npm
 
     - name: Deploy Whoogle stack
       ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
       vars:
         stack_name: whoogle
+      tags: whoogle
 
     - name: Deploy AdGuard Home stack
       ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
       vars:
         stack_name: adguardhome
+      tags: adguardhome

@@ -58,11 +58,13 @@
       ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
       vars:
         stack_name: postgres
+      tags: postgres
 
     - name: Deploy metube stack
       ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
       vars:
         stack_name: metube
+      tags: metube
 
     - name: Wait for postgres to be ready before starting Firefly
       ansible.builtin.wait_for:
@@ -76,3 +78,4 @@
       ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
       vars:
         stack_name: firefly
+      tags: firefly
