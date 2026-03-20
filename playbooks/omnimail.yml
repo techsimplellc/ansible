@@ -6,9 +6,11 @@
 #
 # OmniMail is a build-from-source project (React + TypeScript + Node.js +
 # PostgreSQL + Redis). Unlike most stacks in this repo, it uses
-# docker compose up --build instead of pre-built images. The git repo is
-# cloned directly into the stacks directory; the Ansible-rendered
-# docker-compose.yml overwrites the repo copy on each run.
+# docker compose up --build instead of pre-built images.
+#
+# Source sync: the local omnimail repo (sibling of this repo on the control
+# machine) is rsynced to srv6 via ansible.posix.synchronize — no internet
+# access required on srv6.
 #
 # srv6 is the NFS server — uses nfs_server.yml (not nfs_client.yml).
 #
@@ -28,8 +30,8 @@
 #   ansible-playbook playbooks/omnimail.yml -i inventory.yml --limit srv6 --ask-vault-pass --become
 #
 # Tag-scoped re-deploys:
-#   --tags build   rebuild and restart the stack only (skip git/vault checks)
-#   --tags deploy  render compose + build + start (skip git clone)
+#   --tags build   rebuild and restart the stack only (skip sync/vault checks)
+#   --tags deploy  render compose + build + start (skip source sync)
 # =============================================================================
 
 - name: Deploy OmniMail to srv6
@@ -40,8 +42,9 @@
   vars:
     stacks_root: /opt/stacks
     docker_network: proxy
-    omnimail_repo: https://github.com/techsimplellc/omnimail.git
-    omnimail_version: main
+    # Derives the local omnimail path relative to this repo on the control machine:
+    # playbook_dir = .../ansible/playbooks → two dirnames up = .../git → + /omnimail
+    omnimail_local_path: "{{ playbook_dir | dirname | dirname }}/omnimail"
 
   pre_tasks:
     - name: Assert required vault variables are present
@@ -67,19 +70,18 @@
         state: present
 
   tasks:
-    - name: Ensure git is installed
-      ansible.builtin.apt:
-        name: git
-        state: present
-        update_cache: false
-
-    - name: Clone or update OmniMail repository
-      ansible.builtin.git:
-        repo: "{{ omnimail_repo }}"
-        dest: "{{ stacks_root }}/omnimail"
-        version: "{{ omnimail_version }}"
-        force: true
-      register: git_result
+    - name: Sync OmniMail source from control machine to srv6
+      ansible.posix.synchronize:
+        src: "{{ omnimail_local_path }}/"
+        dest: "{{ stacks_root }}/omnimail/"
+        delete: true
+        rsync_opts:
+          - "--exclude=.git"
+          - "--exclude=node_modules"
+          - "--exclude=.env"
+          - "--exclude=frontend/dist"
+          - "--exclude=frontend/.vite"
+      register: sync_result
 
     - name: Render docker-compose.yml
       ansible.builtin.template:
@@ -95,7 +97,7 @@
       ansible.builtin.command:
         cmd: docker compose up --build --detach --remove-orphans
         chdir: "{{ stacks_root }}/omnimail"
-      when: compose_file.changed or git_result.changed
+      when: compose_file.changed or sync_result.changed
       register: up_result
       changed_when: "'Started' in up_result.stdout or 'Created' in up_result.stdout"
       tags:
