@@ -99,6 +99,7 @@ This is the Ansible automation and homelab infrastructure repository for the PPF
 | OnlyOffice CE | http://192.168.68.16:8084 | https://office-dev.techsimple.dev |
 | FileBrowser Quantum | http://192.168.68.16:8085 | https://drive-dev.techsimple.dev |
 | Paperless-ngx | http://192.168.68.16:8086 | https://paperless.techsimple.dev |
+| OmniMail | http://192.168.68.16:8025 | https://mail.techsimple.dev |
 
 ---
 

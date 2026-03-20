@@ -16,11 +16,13 @@
 #   Authentik       NPM upstream: http://192.168.68.16:9000
 #   SO API          NPM upstream: http://192.168.68.16:8090
 #   SO Web          NPM upstream: http://192.168.68.16:8091
+#   OmniMail        NPM upstream: http://192.168.68.16:8025
 #
 # Internal LAN only:
 #   rsyslog         514/tcp 514/udp (syslog receiver)
 #   Cockpit         9090/tcp
 #   OnlyOffice (SO) 8092/tcp — internal only, NOT exposed via NPM
+#   OmniMail Redis  internal only
 #
 # LLM backend: Ollama on srv5 (192.168.68.15:11434)
 #
@@ -31,6 +33,7 @@
 #   8086 — paperless-ngx
 #   8090 — simple-office-api
 #   8091 — simple-office-web
+#   8025 — omnimail (frontend/nginx)
 #   8092 — onlyoffice-so (LAN only)
 #   9000 — authentik
 #
@@ -39,6 +42,10 @@
 #   paperless_db_password       : "YOUR_PASSWORD"
 #   paperless_secret_key        : "YOUR_SECRET"      # openssl rand -hex 32
 #   paperless_admin_password    : "YOUR_PASSWORD"
+#   --- OmniMail ---
+#   omnimail_db_password        : "YOUR_PASSWORD"    # openssl rand -hex 24
+#   omnimail_session_secret     : "YOUR_SECRET"      # openssl rand -hex 32
+#   omnimail_encryption_key     : "YOUR_SECRET"      # openssl rand -hex 32
 #   --- Simple Office ---
 #   so_db_password              : "YOUR_PASSWORD"    # openssl rand -hex 24
 #   so_jwt_secret               : "YOUR_SECRET"      # openssl rand -hex 32
@@ -75,6 +82,7 @@
       - onlyoffice-so
       - simple-office-api
       - simple-office-web
+      - omnimail
 
   pre_tasks:
     - name: Configure NFS server and local /opt/stacks symlink
@@ -90,6 +98,10 @@
           - paperless_db_password is defined and paperless_db_password | length > 0
           - paperless_secret_key is defined and paperless_secret_key | length > 0
           - paperless_admin_password is defined and paperless_admin_password | length > 0
+          # OmniMail
+          - omnimail_db_password is defined and omnimail_db_password | length > 0
+          - omnimail_session_secret is defined and omnimail_session_secret | length > 0
+          - omnimail_encryption_key is defined and omnimail_encryption_key | length > 0
           # Simple Office
           - so_db_password is defined and so_db_password | length > 0
           - so_jwt_secret is defined and so_jwt_secret | length > 0
@@ -283,3 +295,33 @@
       vars:
         stack_name: simple-office-web
       tags: simple-office-web
+
+    # ── OmniMail stack ────────────────────────────────────────────────────────
+    # Exposed via NPM → Cloudflare tunnel: https://mail.techsimple.dev
+    # NPM upstream: http://192.168.68.16:8025
+    - name: Sync OmniMail source code to srv6
+      ansible.builtin.synchronize:
+        src: "{{ lookup('env', 'HOME') }}/git/omnimail/"
+        dest: "{{ stacks_root }}/omnimail/"
+        rsync_opts:
+          - "--exclude=node_modules"
+          - "--exclude=.env"
+          - "--exclude=dist"
+          - "--exclude=.git"
+          - "--exclude=.claude"
+      tags: omnimail
+
+    - name: Deploy omnimail stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: omnimail
+      tags: omnimail
+
+    - name: Wait for OmniMail to be ready
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 8025
+        delay: 10
+        timeout: 180
+        msg: "Timed out waiting for OmniMail on port 8025"
+      tags: omnimail
