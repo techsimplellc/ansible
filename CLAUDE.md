@@ -74,7 +74,7 @@ This is the Ansible automation and homelab infrastructure repository for the PPF
 | srv3 | 192.168.68.13 | Finance | Firefly III, Firefly Importer, MeTube, PostgreSQL |
 | srv4 | 192.168.68.14 | Productivity | n8n, Cal.com, EspoCRM, PostgreSQL (x3) |
 | srv5 | 192.168.68.15 | AI / GPU | Ollama, AnythingLLM, NVIDIA GPU, NVMe at /mnt/nvme1 |
-| srv6 | 192.168.68.16 | Storage / Services | OnlyOffice, FileBrowser, Paperless-ngx, rsyslog, NFS server, Cockpit |
+| srv6 | 192.168.68.16 | Storage / Services | OnlyOffice, FileBrowser, Paperless-ngx, OmniMail, rsyslog, NFS server, Cockpit |
 | dev1 | 192.168.68.21 | Development | PPF Client Portal (Node/React/PostgreSQL) |
 
 ### Storage Architecture (srv6)
@@ -187,6 +187,7 @@ n8n_db_password / n8n_encryption_key
 calcom_db_password / calcom_nextauth_secret
 espocrm_db_password / espocrm_admin_password
 anythingllm_jwt_secret
+omnimail_db_password / omnimail_session_secret / omnimail_encryption_key
 ```
 
 ---

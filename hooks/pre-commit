@@ -15,12 +15,12 @@ PATTERNS=(
   "Google OAuth client secret:GOCSPX-[0-9A-Za-z_-]{28,}"
   "Google OAuth client ID:[0-9]+-[0-9a-z]+\.apps\.googleusercontent\.com"
   "AWS access key:AKIA[0-9A-Z]{16}"
-  "AWS secret key:['\"]?[0-9a-zA-Z/+]{40}['\"]?"
-  "Private key header:-----BEGIN (RSA |EC |OPENSSH |)PRIVATE KEY-----"
-  "Generic password in YAML:password:\s+['\"]?[A-Za-z0-9!@#$%^&*()_+\-=]{12,}['\"]?"
-  "Generic secret in YAML:secret[_\s]*:\s+['\"]?[A-Za-z0-9!@#$%^&*()_+\-=]{12,}['\"]?"
-  "Generic token in YAML:token:\s+['\"]?[A-Za-z0-9._\-]{20,}['\"]?"
-  "Generic API key:api[_-]?key\s*[=:]\s*['\"]?[A-Za-z0-9._\-]{16,}['\"]?"
+  "AWS secret key:[=:'\"][ \t]*['\"]?[0-9a-zA-Z/+]{40}['\"]?"
+  "Private key header:-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----"
+  "Generic password in YAML:password:[ \t]+['\"]?[A-Za-z0-9!@#$%^&*()_+\-=]{12,}['\"]?"
+  "Generic secret in YAML:secret[_ \t]*:[ \t]+['\"]?[A-Za-z0-9!@#$%^&*()_+\-=]{12,}['\"]?"
+  "Generic token in YAML:token:[ \t]+['\"]?[A-Za-z0-9._\-]{20,}['\"]?"
+  "Generic API key:api[_-]?key[ \t]*[=:][ \t]*['\"]?[A-Za-z0-9._\-]{16,}['\"]?"
   "Cloudflare tunnel token:eyJ[A-Za-z0-9_-]{100,}"
 )
 
@@ -33,6 +33,7 @@ SKIP_PATTERNS=(
   "your[_-].*here"
   "changeme"
   "<.*>"
+  "^#"
 )
 
 # Get staged files (added or modified, not deleted)
@@ -88,7 +89,7 @@ check_file() {
         FOUND=1
         break
       fi
-    done < <(echo "$content" | grep -iE "$pattern" || true)
+    done < <(echo "$content" | grep -iE -- "$pattern" || true)
   done
 }
 

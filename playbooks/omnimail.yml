@@ -1,0 +1,112 @@
+# Repo path: ~/git/ansible/playbooks/omnimail.yml
+---
+# =============================================================================
+# omnimail.yml — Deploy OmniMail webmail client to srv6 (192.168.68.16)
+# Docs: https://github.com/techsimplellc/omnimail
+#
+# OmniMail is a build-from-source project (React + TypeScript + Node.js +
+# PostgreSQL + Redis). Unlike most stacks in this repo, it uses
+# docker compose up --build instead of pre-built images. The git repo is
+# cloned directly into the stacks directory; the Ansible-rendered
+# docker-compose.yml overwrites the repo copy on each run.
+#
+# srv6 is the NFS server — uses nfs_server.yml (not nfs_client.yml).
+#
+# External access:
+#   Internal : http://192.168.68.16:8025
+#   External : https://mail.techsimple.dev
+#              Add public hostname in Cloudflare Zero Trust dashboard:
+#              Networks → Tunnels → <tunnel> → Public Hostnames
+#              Service: http://192.168.68.16:8025
+#
+# Vault requirements (ansible-vault edit group_vars/all/vault.yml):
+#   omnimail_db_password    : "YOUR_PASSWORD"
+#   omnimail_session_secret : "$(openssl rand -hex 64)"
+#   omnimail_encryption_key : "$(openssl rand -hex 32)"
+#
+# Run:
+#   ansible-playbook playbooks/omnimail.yml -i inventory.yml --limit srv6 --ask-vault-pass --become
+#
+# Tag-scoped re-deploys:
+#   --tags build   rebuild and restart the stack only (skip git/vault checks)
+#   --tags deploy  render compose + build + start (skip git clone)
+# =============================================================================
+
+- name: Deploy OmniMail to srv6
+  hosts: srv6
+  become: true
+  gather_facts: true
+
+  vars:
+    stacks_root: /opt/stacks
+    docker_network: proxy
+    omnimail_repo: https://github.com/techsimplellc/omnimail.git
+    omnimail_version: main
+
+  pre_tasks:
+    - name: Assert required vault variables are present
+      ansible.builtin.assert:
+        that:
+          - omnimail_db_password is defined and omnimail_db_password | length > 0
+          - omnimail_session_secret is defined and omnimail_session_secret | length > 0
+          - omnimail_encryption_key is defined and omnimail_encryption_key | length > 0
+        fail_msg: >
+          Missing vault variables for OmniMail. Ensure all required vars are
+          set in group_vars/all/vault.yml. See playbook header for full list.
+      tags: always
+
+    - name: Configure NFS server and local /opt/stacks symlink
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/nfs_server.yml"
+
+    - name: Enforce /opt/stacks ownership
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/stacks_owner.yml"
+
+    - name: Ensure shared Docker network exists
+      community.docker.docker_network:
+        name: "{{ docker_network }}"
+        state: present
+
+  tasks:
+    - name: Ensure git is installed
+      ansible.builtin.apt:
+        name: git
+        state: present
+        update_cache: false
+
+    - name: Clone or update OmniMail repository
+      ansible.builtin.git:
+        repo: "{{ omnimail_repo }}"
+        dest: "{{ stacks_root }}/omnimail"
+        version: "{{ omnimail_version }}"
+        force: true
+      register: git_result
+
+    - name: Render docker-compose.yml
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/templates/omnimail/docker-compose.yml.j2"
+        dest: "{{ stacks_root }}/omnimail/docker-compose.yml"
+        owner: root
+        group: docker-admin
+        mode: "0640"
+      register: compose_file
+      tags: deploy
+
+    - name: Build images and start OmniMail stack
+      ansible.builtin.command:
+        cmd: docker compose up --build --detach --remove-orphans
+        chdir: "{{ stacks_root }}/omnimail"
+      when: compose_file.changed or git_result.changed
+      register: up_result
+      changed_when: "'Started' in up_result.stdout or 'Created' in up_result.stdout"
+      tags:
+        - deploy
+        - build
+
+    - name: Wait for OmniMail to be reachable on port 8025
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 8025
+        delay: 10
+        timeout: 180
+        msg: "Timed out waiting for OmniMail frontend on port 8025"
+      tags: deploy

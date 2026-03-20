@@ -1,0 +1,77 @@
+# Repo path: ~/git/ansible/playbooks/templates/omnimail/docker-compose.yml.j2
+# Managed by Ansible — do not edit directly on the server. Re-render with:
+#   ansible-playbook playbooks/omnimail.yml -i inventory.yml --limit srv4 --ask-vault-pass --become
+---
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8025:80"
+    depends_on:
+      - backend
+    networks:
+      - proxy
+      - omnimail_net
+
+  backend:
+    build:
+      context: ./src/backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://omnimail:{{ omnimail_db_password }}@db:5432/omnimail
+      REDIS_URL: redis://redis:6379
+      SESSION_SECRET: "{{ omnimail_session_secret }}"
+      ENCRYPTION_KEY: "{{ omnimail_encryption_key }}"
+      PORT: 3001
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - omnimail_net
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: omnimail
+      POSTGRES_PASSWORD: "{{ omnimail_db_password }}"
+      POSTGRES_DB: omnimail
+    volumes:
+      - omnimail_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U omnimail"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - omnimail_net
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - omnimail_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - omnimail_net
+
+volumes:
+  omnimail_db:
+  omnimail_redis:
+
+networks:
+  proxy:
+    external: true
+  omnimail_net:
+    driver: bridge
