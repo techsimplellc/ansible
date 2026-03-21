@@ -1,0 +1,64 @@
+---
+# =============================================================================
+# n8n.yml — Deploy PostgreSQL + n8n stacks to srv4
+# Docs: https://docs.n8n.io/hosting/installation/docker/
+#
+# Internal LAN only (not exposed via cloudflared tunnel).
+#
+# Vault: playbooks/vars/n8n_vault.yml
+#   n8n_db_password   : database password
+#   n8n_encryption_key: credentials encryption key (openssl rand -hex 16)
+#
+# Run:
+#   ansible-playbook playbooks/n8n.yml -i inventory.yml --ask-vault-pass --become
+# =============================================================================
+
+- name: Deploy n8n stack to srv4
+  hosts: srv4
+  become: true
+  gather_facts: true
+
+  vars_files:
+    - vars/n8n_vault.yml
+
+  vars:
+    stacks_root: /opt/stacks
+    docker_network: proxy
+
+  pre_tasks:
+    - name: Assert required vault variables are present
+      ansible.builtin.assert:
+        that:
+          - n8n_db_password is defined and n8n_db_password | length > 0
+          - n8n_encryption_key is defined and n8n_encryption_key | length > 0
+        fail_msg: "Missing vault vars — populate and encrypt playbooks/vars/n8n_vault.yml"
+
+    - name: Mount NFS storage from srv6
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/nfs_client.yml"
+
+    - name: Enforce /opt/stacks ownership
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/stacks_owner.yml"
+
+    - name: Ensure shared Docker network exists
+      community.docker.docker_network:
+        name: "{{ docker_network }}"
+        state: present
+
+  tasks:
+    - name: Deploy postgres-n8n stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: postgres-n8n
+
+    - name: Wait for postgres-n8n to be ready
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 5433
+        delay: 5
+        timeout: 60
+        msg: "Timed out waiting for postgres-n8n on port 5433"
+
+    - name: Deploy n8n stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: n8n

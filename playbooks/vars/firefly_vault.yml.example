@@ -1,0 +1,15 @@
+---
+# firefly_vault.yml — secrets for the Firefly III stack (srv3)
+#
+# Setup:
+#   cp firefly_vault.yml.example firefly_vault.yml
+#   ansible-vault encrypt playbooks/vars/firefly_vault.yml
+#
+# Generate values:
+#   firefly_db_password  : openssl rand -hex 24
+#   firefly_app_key      : openssl rand -base64 32   (must be exactly 32 chars after base64)
+#   firefly_importer_token: generated in Firefly III UI → Profile → Personal Access Tokens
+
+firefly_db_password: "CHANGE_ME"
+firefly_app_key: "CHANGE_ME"
+firefly_importer_token: "CHANGE_ME"

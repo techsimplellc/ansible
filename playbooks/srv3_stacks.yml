@@ -1,81 +1,25 @@
-# Repo path: ~/git/ansible/playbooks/srv3_stacks.yml
 ---
 # =============================================================================
-# srv3_stacks.yml — Deploy Docker Compose stacks to srv3 (192.168.68.13)
+# srv3_stacks.yml — Orchestrator: deploy all stacks to srv3
 # Docs:
 #   MeTube          : https://github.com/alexta69/metube
 #   Firefly III     : https://docs.firefly-iii.org/
 #   Firefly Importer: https://docs.firefly-iii.org/how-to/data-importer/
-#   PostgreSQL      : https://hub.docker.com/_/postgres
 #
-# Vault requirements (ansible-vault edit group_vars/all/vault.yml):
-#   firefly_db_password  : "YOUR_DB_PASSWORD"
-#   firefly_app_key      : "YOUR_32_CHAR_APP_KEY"  # generate: openssl rand -base64 32
-#   firefly_importer_token: "YOUR_PERSONAL_ACCESS_TOKEN"  # generated in Firefly III UI
+# This orchestrator imports individual app playbooks. To deploy a single app,
+# run its playbook directly (e.g. ansible-playbook playbooks/firefly.yml).
 #
-# Run:
-#   ansible-playbook playbooks/srv3_stacks.yml -i inventory.yml --limit srv3 --ask-vault-pass --become
+# Two-pass note: firefly-importer requires a Firefly III API token.
+# Run firefly.yml first, complete setup, then run this orchestrator or
+# firefly-importer.yml directly on pass 2.
+#
+# Vault requirements:
+#   playbooks/vars/firefly_vault.yml  — firefly_db_password, firefly_app_key, firefly_importer_token
+#
+# Run all stacks:
+#   ansible-playbook playbooks/srv3_stacks.yml -i inventory.yml --ask-vault-pass --become
 # =============================================================================
 
-- name: Deploy Docker Compose stacks to srv3
-  hosts: srv3
-  become: true
-  gather_facts: true
-
-  vars:
-    stacks_root: /opt/stacks
-    docker_network: proxy
-    stack_dirs:
-      - postgres
-      - metube
-      - firefly
-      - firefly-importer
-
-  pre_tasks:
-    - name: Assert required vault variables are present
-      ansible.builtin.assert:
-        that:
-          - firefly_db_password is defined and firefly_db_password | length > 0
-          - firefly_app_key is defined and firefly_app_key | length > 0
-          - firefly_importer_token is defined and firefly_importer_token | length > 0
-        fail_msg: >
-          Missing vault variables. Ensure these are set in vault.yml:
-          firefly_db_password, firefly_app_key, firefly_importer_token
-
-    - name: Mount NFS storage from srv6 and replace /opt/stacks symlink
-      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/nfs_client.yml"
-
-    - name: Enforce /opt/stacks ownership
-      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/stacks_owner.yml"
-
-    - name: Ensure shared Docker network exists
-      community.docker.docker_network:
-        name: "{{ docker_network }}"
-        state: present
-
-  tasks:
-    - name: Deploy postgres stack
-      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
-      vars:
-        stack_name: postgres
-      tags: postgres
-
-    - name: Deploy metube stack
-      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
-      vars:
-        stack_name: metube
-      tags: metube
-
-    - name: Wait for postgres to be ready before starting Firefly
-      ansible.builtin.wait_for:
-        host: "{{ ansible_host }}"
-        port: 5432
-        delay: 5
-        timeout: 60
-        msg: "Timed out waiting for PostgreSQL on port 5432"
-
-    - name: Deploy firefly stack
-      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
-      vars:
-        stack_name: firefly
-      tags: firefly
+- import_playbook: metube.yml
+- import_playbook: firefly.yml
+- import_playbook: firefly-importer.yml

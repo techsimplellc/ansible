@@ -1,0 +1,93 @@
+---
+# =============================================================================
+# authentik.yml — Deploy PostgreSQL + Authentik SSO stack to srv6
+# Docs: https://docs.goauthentik.io/docs/install-config/install/docker-compose
+#
+# Exposed via cloudflared tunnel through NPM on srv1.
+# NPM upstream: http://192.168.68.16:9000
+#
+# Vault: playbooks/vars/authentik_vault.yml
+#   authentik_db_password: database password (openssl rand -hex 24)
+#   authentik_secret_key : app secret key (openssl rand -hex 60)
+#
+# Run:
+#   ansible-playbook playbooks/authentik.yml -i inventory.yml --ask-vault-pass --become
+# =============================================================================
+
+- name: Deploy Authentik SSO stack to srv6
+  hosts: srv6
+  become: true
+  gather_facts: true
+
+  vars_files:
+    - vars/authentik_vault.yml
+
+  vars:
+    stacks_root: /opt/stacks
+    docker_network: proxy
+
+  pre_tasks:
+    - name: Assert required vault variables are present
+      ansible.builtin.assert:
+        that:
+          - authentik_db_password is defined and authentik_db_password | length > 0
+          - authentik_secret_key is defined and authentik_secret_key | length > 0
+        fail_msg: "Missing vault vars — populate and encrypt playbooks/vars/authentik_vault.yml"
+
+    - name: Configure NFS server on srv6
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/nfs_server.yml"
+
+    - name: Enforce /opt/stacks ownership
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/stacks_owner.yml"
+
+    - name: Ensure shared Docker network exists
+      community.docker.docker_network:
+        name: "{{ docker_network }}"
+        state: present
+
+    - name: Ensure postgres-authentik stack directory exists
+      ansible.builtin.file:
+        path: "{{ stacks_root }}/postgres-authentik"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Ensure authentik stack directories exist
+      ansible.builtin.file:
+        path: "{{ stacks_root }}/authentik/{{ item }}"
+        state: directory
+        owner: root
+        group: docker-admin
+        mode: "0775"
+      loop:
+        - media
+        - certs
+        - custom-templates
+
+  tasks:
+    - name: Deploy postgres-authentik stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: postgres-authentik
+
+    - name: Wait for postgres-authentik to be ready
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 5439
+        delay: 5
+        timeout: 60
+        msg: "Timed out waiting for postgres-authentik on port 5439"
+
+    - name: Deploy authentik stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: authentik
+
+    - name: Wait for Authentik to be ready
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 9000
+        delay: 15
+        timeout: 180
+        msg: "Timed out waiting for Authentik on port 9000"

@@ -1,0 +1,60 @@
+---
+# =============================================================================
+# firefly-importer.yml — Deploy Firefly III Data Importer stack to srv3
+# Docs: https://docs.firefly-iii.org/how-to/data-importer/
+#
+# Two-pass deployment:
+#   Pass 1: Deploy firefly.yml, complete first-time Firefly III setup
+#   Between passes:
+#     1. Log in to Firefly III
+#     2. Profile → Personal Access Tokens → Create token
+#     3. ansible-vault edit playbooks/vars/firefly_vault.yml
+#        Set firefly_importer_token to the generated token
+#   Pass 2: Run this playbook
+#
+# Vault: playbooks/vars/firefly_vault.yml
+#   firefly_importer_token: personal access token from Firefly III UI
+#
+# Run:
+#   ansible-playbook playbooks/firefly-importer.yml -i inventory.yml --ask-vault-pass --become
+# =============================================================================
+
+- name: Deploy Firefly III Importer stack to srv3
+  hosts: srv3
+  become: true
+  gather_facts: true
+
+  vars_files:
+    - vars/firefly_vault.yml
+
+  vars:
+    stacks_root: /opt/stacks
+    docker_network: proxy
+
+  pre_tasks:
+    - name: Assert firefly_importer_token is set
+      ansible.builtin.assert:
+        that:
+          - firefly_importer_token is defined
+          - firefly_importer_token | length > 0
+          - firefly_importer_token != "CHANGE_ME"
+        fail_msg: >
+          firefly_importer_token is not set. Complete Firefly III first login,
+          generate a Personal Access Token, then update playbooks/vars/firefly_vault.yml.
+
+    - name: Mount NFS storage from srv6
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/nfs_client.yml"
+
+    - name: Enforce /opt/stacks ownership
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/stacks_owner.yml"
+
+    - name: Ensure shared Docker network exists
+      community.docker.docker_network:
+        name: "{{ docker_network }}"
+        state: present
+
+  tasks:
+    - name: Deploy firefly-importer stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: firefly-importer

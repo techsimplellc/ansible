@@ -1,0 +1,89 @@
+---
+# =============================================================================
+# anythingllm.yml — Deploy AnythingLLM stack to srv5
+# Docs: https://docs.anythingllm.com/installation/self-hosted/docker
+#
+# Prerequisites: Ollama must be running on srv5 (deploy ollama.yml first).
+# LLM backend: Ollama at http://192.168.68.15:11434
+# Exposed via cloudflared tunnel through NPM on srv1: http://192.168.68.15:3001
+#
+# Vault: playbooks/vars/anythingllm_vault.yml
+#   anythingllm_jwt_secret: JWT signing secret (openssl rand -base64 32)
+#
+# Run:
+#   ansible-playbook playbooks/anythingllm.yml -i inventory.yml --ask-vault-pass --become
+# =============================================================================
+
+- name: Deploy AnythingLLM stack to srv5
+  hosts: srv5
+  become: true
+  gather_facts: true
+
+  vars_files:
+    - vars/anythingllm_vault.yml
+
+  vars:
+    stacks_root: /opt/stacks
+    docker_network: proxy
+    models_uuid: "18081cdc-9742-4142-9ad1-56d8374edd1a"
+    models_mount_base: "/mnt/nvme1"
+    models_mount: "/mnt/nvme1/models"
+
+  pre_tasks:
+    - name: Assert anythingllm_jwt_secret is set
+      ansible.builtin.assert:
+        that:
+          - anythingllm_jwt_secret is defined
+          - anythingllm_jwt_secret | length > 0
+        fail_msg: "anythingllm_jwt_secret missing — populate and encrypt playbooks/vars/anythingllm_vault.yml"
+
+    - name: Mount NFS storage from srv6
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/nfs_client.yml"
+
+    - name: Enforce /opt/stacks ownership
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/stacks_owner.yml"
+
+    - name: Ensure NVMe mount point exists
+      ansible.builtin.file:
+        path: "{{ models_mount_base }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Mount NVMe partition by UUID
+      ansible.posix.mount:
+        path: "{{ models_mount_base }}"
+        src: "UUID={{ models_uuid }}"
+        fstype: ext4
+        opts: defaults,nofail
+        state: mounted
+
+    - name: Ensure models subdirectory exists on NVMe partition
+      ansible.builtin.file:
+        path: "{{ models_mount }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Ensure shared Docker network exists
+      community.docker.docker_network:
+        name: "{{ docker_network }}"
+        state: present
+
+    - name: Install NVIDIA Container Toolkit
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/nvidia_toolkit.yml"
+
+    - name: Verify Ollama is reachable
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 11434
+        timeout: 30
+        msg: "Ollama is not running on port 11434 — deploy ollama.yml first"
+
+  tasks:
+    - name: Deploy anythingllm stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: anythingllm

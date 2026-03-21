@@ -1,0 +1,66 @@
+---
+# =============================================================================
+# calcom.yml — Deploy PostgreSQL + Cal.com stacks to srv4
+# Docs: https://cal.com/docs/self-hosting/docker
+#
+# Exposed via cloudflared tunnel through NPM on srv1.
+#
+# Vault: playbooks/vars/calcom_vault.yml
+#   calcom_db_password      : database password
+#   calcom_nextauth_secret  : NextAuth secret (openssl rand -base64 32)
+#   calendso_encryption_key : credentials encryption key (openssl rand -hex 16)
+#
+# Run:
+#   ansible-playbook playbooks/calcom.yml -i inventory.yml --ask-vault-pass --become
+# =============================================================================
+
+- name: Deploy Cal.com stack to srv4
+  hosts: srv4
+  become: true
+  gather_facts: true
+
+  vars_files:
+    - vars/calcom_vault.yml
+
+  vars:
+    stacks_root: /opt/stacks
+    docker_network: proxy
+
+  pre_tasks:
+    - name: Assert required vault variables are present
+      ansible.builtin.assert:
+        that:
+          - calcom_db_password is defined and calcom_db_password | length > 0
+          - calcom_nextauth_secret is defined and calcom_nextauth_secret | length > 0
+          - calendso_encryption_key is defined and calendso_encryption_key | length > 0
+        fail_msg: "Missing vault vars — populate and encrypt playbooks/vars/calcom_vault.yml"
+
+    - name: Mount NFS storage from srv6
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/nfs_client.yml"
+
+    - name: Enforce /opt/stacks ownership
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/stacks_owner.yml"
+
+    - name: Ensure shared Docker network exists
+      community.docker.docker_network:
+        name: "{{ docker_network }}"
+        state: present
+
+  tasks:
+    - name: Deploy postgres-calcom stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: postgres-calcom
+
+    - name: Wait for postgres-calcom to be ready
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 5434
+        delay: 5
+        timeout: 60
+        msg: "Timed out waiting for postgres-calcom on port 5434"
+
+    - name: Deploy calcom stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: calcom

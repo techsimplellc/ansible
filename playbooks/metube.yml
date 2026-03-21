@@ -1,0 +1,37 @@
+---
+# =============================================================================
+# metube.yml — Deploy MeTube stack to srv3
+# Docs: https://github.com/alexta69/metube
+#
+# No app-specific vault vars required.
+#
+# Run:
+#   ansible-playbook playbooks/metube.yml -i inventory.yml --ask-vault-pass --become
+# =============================================================================
+
+- name: Deploy MeTube stack to srv3
+  hosts: srv3
+  become: true
+  gather_facts: true
+
+  vars:
+    stacks_root: /opt/stacks
+    docker_network: proxy
+
+  pre_tasks:
+    - name: Mount NFS storage from srv6
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/nfs_client.yml"
+
+    - name: Enforce /opt/stacks ownership
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/stacks_owner.yml"
+
+    - name: Ensure shared Docker network exists
+      community.docker.docker_network:
+        name: "{{ docker_network }}"
+        state: present
+
+  tasks:
+    - name: Deploy metube stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: metube

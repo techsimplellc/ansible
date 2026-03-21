@@ -1,0 +1,15 @@
+# Unencrypted vault files — always encrypt before committing
+# (use: ansible-vault encrypt playbooks/vars/<app>_vault.yml)
+# The .example files ARE committed; the live vault files are encrypted and committed too.
+# This entry blocks accidental commit of a plaintext vault with CHANGE_ME still present.
+# Remove entry and verify encryption before committing vault files.
+
+# Retry files from failed runs
+*.retry
+
+# Python cache
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store

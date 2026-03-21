@@ -16,17 +16,51 @@ This is the Ansible automation and homelab infrastructure repository for the PPF
 ├── group_vars/
 │   └── all/
 │       ├── vars.yml
-│       └── vault.yml                  # Ansible Vault — auto-loaded, never commit plaintext
+│       └── vault.yml                  # Global vault — SSH pubkeys only; auto-loaded by hardening role
 ├── host_vars/
 │   └── srv1.yml
 ├── playbooks/
 │   ├── ubuntu_pro.yml
 │   ├── harden.yml
-│   ├── srv1_stacks.yml
-│   ├── srv3_stacks.yml
-│   ├── srv4_stacks.yml
-│   ├── srv5_stacks.yml
-│   ├── srv6_stacks.yml
+│   ├── setup_nginx.yml
+│   ├── ufw.yml
+│   │
+│   ├── # ── Orchestrators (import_playbook thin wrappers) ──────────────────
+│   ├── srv1_stacks.yml                # → cloudflared, npm, whoogle, adguardhome
+│   ├── srv3_stacks.yml                # → metube, firefly, firefly-importer
+│   ├── srv4_stacks.yml                # → n8n, calcom, espocrm
+│   ├── srv5_stacks.yml                # → ollama, anythingllm
+│   ├── srv6_stacks.yml                # infra play + → paperless, authentik, simple-office, omnimail
+│   │
+│   ├── # ── Individual app playbooks (fully standalone) ────────────────────
+│   ├── cloudflared.yml                # srv1 — Cloudflare tunnel
+│   ├── npm.yml                        # srv1 — Nginx Proxy Manager
+│   ├── whoogle.yml                    # srv1 — Whoogle search
+│   ├── adguardhome.yml                # srv1 — AdGuard Home DNS
+│   ├── metube.yml                     # srv3 — MeTube
+│   ├── firefly.yml                    # srv3 — PostgreSQL + Firefly III
+│   ├── firefly-importer.yml           # srv3 — Firefly Importer (two-pass)
+│   ├── n8n.yml                        # srv4 — postgres-n8n + n8n
+│   ├── calcom.yml                     # srv4 — postgres-calcom + cal.com
+│   ├── espocrm.yml                    # srv4 — postgres-espocrm + EspoCRM
+│   ├── ollama.yml                     # srv5 — Ollama + NVMe + NVIDIA toolkit
+│   ├── anythingllm.yml                # srv5 — AnythingLLM
+│   ├── paperless.yml                  # srv6 — postgres-paperless + Paperless-ngx + AI/GPT
+│   ├── authentik.yml                  # srv6 — postgres-authentik + Authentik SSO
+│   ├── simple-office.yml              # srv6 — SO suite (two-pass)
+│   ├── omnimail.yml                   # srv6 — OmniMail (build-from-source)
+│   │
+│   ├── vars/                          # Per-app vault files (encrypted with same password)
+│   │   ├── cloudflared_vault.yml.example
+│   │   ├── firefly_vault.yml.example
+│   │   ├── n8n_vault.yml.example
+│   │   ├── calcom_vault.yml.example
+│   │   ├── espocrm_vault.yml.example
+│   │   ├── anythingllm_vault.yml.example
+│   │   ├── paperless_vault.yml.example
+│   │   ├── authentik_vault.yml.example
+│   │   ├── simple_office_vault.yml.example
+│   │   └── omnimail_vault.yml.example
 │   ├── tasks/
 │   │   ├── deploy_stack.yml           # Generic reusable — NEVER rename
 │   │   ├── free_port53.yml
@@ -110,11 +144,12 @@ This is the Ansible automation and homelab infrastructure repository for the PPF
 3. **Never declare work complete** without actual testing or verification
 4. **Vault variables** — never use `vault_` prefix, use direct names (e.g. `paperless_db_password`)
 5. **Vault edits** — always use `ansible-vault edit`, never `encrypt_string` to append
-6. **`deploy_stack.yml`** — never rename this file, it is referenced by all server playbooks
-7. **`playbook_dir`** — always use in template `src:` paths within included tasks
-8. **`sed -i` on macOS** — always `sed -i ''` (BSD sed requires empty extension argument)
-9. **NFS server (srv6) must run before NFS client playbooks** — execution order is critical
-10. **Hardening playbook must run before stack playbooks** on any new server
+6. **Per-app vaults** — app secrets live in `playbooks/vars/<app>_vault.yml`; only SSH pubkeys remain in `group_vars/all/vault.yml`. Load app vaults via `vars_files:` in each playbook.
+7. **`deploy_stack.yml`** — never rename this file, it is referenced by all server playbooks
+8. **`playbook_dir`** — always use in template `src:` paths within included tasks
+9. **`sed -i` on macOS** — always `sed -i ''` (BSD sed requires empty extension argument)
+10. **NFS server (srv6) must run before NFS client playbooks** — execution order is critical
+11. **Hardening playbook must run before stack playbooks** on any new server
 
 ---
 
@@ -165,31 +200,40 @@ CIS Ubuntu 24.04 L1 baseline. Key settings:
 
 ## Ansible Vault
 
+Two vault layers, same password (`--ask-vault-pass` decrypts both):
+
+| File | Contents | Scope |
+|---|---|---|
+| `group_vars/all/vault.yml` | `bpainter_pubkey`, `docker_admin_pubkey` | Auto-loaded by hardening role |
+| `playbooks/vars/<app>_vault.yml` | App-specific secrets | Loaded via `vars_files:` in each playbook |
+
 ```bash
-# Edit vault
-ansible-vault edit group_vars/all/vault.yml
+# Create a new per-app vault from template
+cp playbooks/vars/cloudflared_vault.yml.example playbooks/vars/cloudflared_vault.yml
+# Edit plaintext values, then encrypt
+ansible-vault encrypt playbooks/vars/cloudflared_vault.yml
 
-# View vault
-ansible-vault view group_vars/all/vault.yml
+# Edit an existing vault
+ansible-vault edit playbooks/vars/cloudflared_vault.yml
 
-# Run playbook with vault
-ansible-playbook playbooks/<name>.yml -i inventory.yml --limit <host> --ask-vault-pass --become
+# Run playbook (decrypts both global and app vaults with one password)
+ansible-playbook playbooks/<name>.yml -i inventory.yml --ask-vault-pass --become
 ```
 
-Key vault variables (never commit values):
-```
-cloudflared_tunnel_token
-bpainter_pubkey / docker_admin_pubkey
-onlyoffice_db_password / onlyoffice_jwt_secret
-paperless_db_password / paperless_secret_key / paperless_admin_password / paperless_api_token
-filebrowser_admin_password
-firefly_db_password / firefly_app_key / firefly_importer_token
-n8n_db_password / n8n_encryption_key
-calcom_db_password / calcom_nextauth_secret
-espocrm_db_password / espocrm_admin_password
-anythingllm_jwt_secret
-omnimail_db_password / omnimail_session_secret / omnimail_encryption_key
-```
+Per-app vault files and their key variables:
+
+| Vault file | Key variables |
+|---|---|
+| `cloudflared_vault.yml` | `cloudflared_tunnel_token` |
+| `firefly_vault.yml` | `firefly_db_password`, `firefly_app_key`, `firefly_importer_token` |
+| `n8n_vault.yml` | `n8n_db_password`, `n8n_encryption_key` |
+| `calcom_vault.yml` | `calcom_db_password`, `calcom_nextauth_secret`, `calendso_encryption_key` |
+| `espocrm_vault.yml` | `espocrm_db_password`, `espocrm_admin_password` |
+| `anythingllm_vault.yml` | `anythingllm_jwt_secret` |
+| `paperless_vault.yml` | `paperless_db_password`, `paperless_secret_key`, `paperless_admin_password`, `paperless_api_token` |
+| `authentik_vault.yml` | `authentik_db_password`, `authentik_secret_key` |
+| `simple_office_vault.yml` | `so_db_password`, `so_jwt_secret`, `so_onlyoffice_jwt_secret`, `so_session_secret`, `so_oidc_client_id`, `so_oidc_client_secret`, `onlyoffice_db_password`, `onlyoffice_jwt_secret` |
+| `omnimail_vault.yml` | `omnimail_db_password`, `omnimail_session_secret`, `omnimail_encryption_key`, OAuth client IDs/secrets |
 
 ---
 
@@ -202,18 +246,43 @@ omnimail_db_password / omnimail_session_secret / omnimail_encryption_key
 # Hardening (run before stack playbooks on new servers)
 ansible-playbook playbooks/harden.yml -i inventory.yml --limit <host> --ask-vault-pass --become
 
-# Individual server stacks
-ansible-playbook playbooks/srv1_stacks.yml -i inventory.yml --limit srv1 --ask-vault-pass --become
-ansible-playbook playbooks/srv3_stacks.yml -i inventory.yml --limit srv3 --ask-vault-pass --become
-ansible-playbook playbooks/srv4_stacks.yml -i inventory.yml --limit srv4 --ask-vault-pass --become
-ansible-playbook playbooks/srv5_stacks.yml -i inventory.yml --limit srv5 --ask-vault-pass --become
-ansible-playbook playbooks/srv6_stacks.yml -i inventory.yml --limit srv6 --ask-vault-pass --become
+# ── Orchestrators (deploy all stacks on a server) ─────────────────────────────
+# Note: srv6 must be deployed before srv1/3/4/5 (NFS server dependency)
+ansible-playbook playbooks/srv6_stacks.yml -i inventory.yml --ask-vault-pass --become
+ansible-playbook playbooks/srv1_stacks.yml -i inventory.yml --ask-vault-pass --become
+ansible-playbook playbooks/srv3_stacks.yml -i inventory.yml --ask-vault-pass --become
+ansible-playbook playbooks/srv4_stacks.yml -i inventory.yml --ask-vault-pass --become
+ansible-playbook playbooks/srv5_stacks.yml -i inventory.yml --ask-vault-pass --become
 
-# Tag-scoped runs
+# ── Individual app playbooks (deploy one app) ─────────────────────────────────
+ansible-playbook playbooks/cloudflared.yml   -i inventory.yml --ask-vault-pass --become
+ansible-playbook playbooks/npm.yml           -i inventory.yml --ask-vault-pass --become
+ansible-playbook playbooks/whoogle.yml       -i inventory.yml --ask-vault-pass --become
+ansible-playbook playbooks/adguardhome.yml   -i inventory.yml --ask-vault-pass --become
+ansible-playbook playbooks/metube.yml        -i inventory.yml --ask-vault-pass --become
+ansible-playbook playbooks/firefly.yml       -i inventory.yml --ask-vault-pass --become
+ansible-playbook playbooks/firefly-importer.yml -i inventory.yml --ask-vault-pass --become
+ansible-playbook playbooks/n8n.yml           -i inventory.yml --ask-vault-pass --become
+ansible-playbook playbooks/calcom.yml        -i inventory.yml --ask-vault-pass --become
+ansible-playbook playbooks/espocrm.yml       -i inventory.yml --ask-vault-pass --become
+ansible-playbook playbooks/ollama.yml        -i inventory.yml --ask-vault-pass --become
+ansible-playbook playbooks/anythingllm.yml   -i inventory.yml --ask-vault-pass --become
+ansible-playbook playbooks/paperless.yml     -i inventory.yml --ask-vault-pass --become
+ansible-playbook playbooks/authentik.yml     -i inventory.yml --ask-vault-pass --become
+ansible-playbook playbooks/simple-office.yml -i inventory.yml --ask-vault-pass --become
+ansible-playbook playbooks/omnimail.yml      -i inventory.yml --ask-vault-pass --become
+
+# ── Tag-scoped runs ───────────────────────────────────────────────────────────
+# Harden only specific tasks
 ansible-playbook playbooks/harden.yml -i inventory.yml --tags rsyslog --ask-vault-pass --become
 ansible-playbook playbooks/harden.yml -i inventory.yml --tags cis --ask-vault-pass --become
+# Paperless pass 1 (skip AI/GPT requiring API token)
+ansible-playbook playbooks/paperless.yml -i inventory.yml --ask-vault-pass --become --skip-tags ai,gpt
+# Simple Office pass 1 (infrastructure only, before Authentik OIDC setup)
+ansible-playbook playbooks/simple-office.yml -i inventory.yml --ask-vault-pass --become --tags infra
 
-# Ad-hoc ownership fix across all servers
+# ── Ad-hoc ────────────────────────────────────────────────────────────────────
+# Fix ownership across all servers
 ansible all -i inventory.yml -m shell \
   -a "chown -R root:docker-admin /opt/stacks && chmod -R 775 /opt/stacks" \
   --ask-vault-pass --become
@@ -235,8 +304,10 @@ ansible all -i inventory.yml -m shell \
 
 ## Pending / Known Issues
 
-- [ ] firefly-importer on srv3 — waiting for Firefly III first login to generate API token
-- [ ] paperless-ai and paperless-gpt on srv6 — waiting for Paperless-ngx API token
+- [ ] firefly-importer on srv3 — waiting for Firefly III first login to generate API token; run `firefly-importer.yml` after token is added to `firefly_vault.yml`
+- [ ] paperless-ai and paperless-gpt on srv6 — waiting for Paperless-ngx API token; run `paperless.yml` without `--skip-tags ai,gpt` after token added to `paperless_vault.yml`
+- [ ] simple-office.yml pass 2 — waiting for Authentik OIDC client setup; add `so_oidc_client_id` / `so_oidc_client_secret` to `simple_office_vault.yml` then re-run
+- [ ] Per-app vault files need to be created from `.example` templates and encrypted for each server
 - [ ] srv6 FileBrowser Quantum — admin password reset may be needed (env var ignored after DB init)
 - [ ] srv6 OnlyOffice + FileBrowser integration — config.yaml not yet configured
 - [ ] NFS client mounts on srv1, srv3, srv4, srv5 — verify all are active post-setup

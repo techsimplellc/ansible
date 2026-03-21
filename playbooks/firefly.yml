@@ -1,0 +1,62 @@
+---
+# =============================================================================
+# firefly.yml — Deploy PostgreSQL + Firefly III stacks to srv3
+# Docs: https://docs.firefly-iii.org/
+#
+# Vault: playbooks/vars/firefly_vault.yml
+#   firefly_db_password  : database password
+#   firefly_app_key      : 32-char app key (openssl rand -base64 32)
+#
+# Run:
+#   ansible-playbook playbooks/firefly.yml -i inventory.yml --ask-vault-pass --become
+# =============================================================================
+
+- name: Deploy Firefly III stack to srv3
+  hosts: srv3
+  become: true
+  gather_facts: true
+
+  vars_files:
+    - vars/firefly_vault.yml
+
+  vars:
+    stacks_root: /opt/stacks
+    docker_network: proxy
+
+  pre_tasks:
+    - name: Assert required vault variables are present
+      ansible.builtin.assert:
+        that:
+          - firefly_db_password is defined and firefly_db_password | length > 0
+          - firefly_app_key is defined and firefly_app_key | length > 0
+        fail_msg: "Missing vault vars — populate and encrypt playbooks/vars/firefly_vault.yml"
+
+    - name: Mount NFS storage from srv6
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/nfs_client.yml"
+
+    - name: Enforce /opt/stacks ownership
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/stacks_owner.yml"
+
+    - name: Ensure shared Docker network exists
+      community.docker.docker_network:
+        name: "{{ docker_network }}"
+        state: present
+
+  tasks:
+    - name: Deploy postgres stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: postgres
+
+    - name: Wait for postgres to be ready
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 5432
+        delay: 5
+        timeout: 60
+        msg: "Timed out waiting for PostgreSQL on port 5432"
+
+    - name: Deploy firefly stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: firefly

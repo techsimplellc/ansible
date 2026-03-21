@@ -1,77 +1,23 @@
-# Repo path: ~/git/ansible/playbooks/srv1_stacks.yml
 ---
 # =============================================================================
-# deploy_stacks.yml — Deploy Docker Compose stacks to srv1
+# srv1_stacks.yml — Orchestrator: deploy all stacks to srv1
 # Docs:
 #   cloudflared : https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/
 #   NPM         : https://nginxproxymanager.com/
 #   Whoogle     : https://github.com/benbusby/whoogle-search
 #   AdGuard Home: https://github.com/AdguardTeam/AdGuardHome
 #
-# Vault requirements (ansible-vault edit group_vars/all/vault.yml):
-#   cloudflared_tunnel_token: "YOUR_TUNNEL_TOKEN"
+# This orchestrator imports individual app playbooks. To deploy a single app,
+# run its playbook directly (e.g. ansible-playbook playbooks/cloudflared.yml).
 #
-# Run:
-#   ansible-playbook playbooks/deploy_stacks.yml -i inventory.yml --limit srv1 --ask-vault-pass --become
+# Vault requirements:
+#   playbooks/vars/cloudflared_vault.yml  — cloudflared_tunnel_token
+#
+# Run all stacks:
+#   ansible-playbook playbooks/srv1_stacks.yml -i inventory.yml --ask-vault-pass --become
 # =============================================================================
 
-- name: Deploy Docker Compose stacks to srv1
-  hosts: srv1
-  become: true
-  gather_facts: true
-
-  vars:
-    stacks_root: /opt/stacks
-    docker_network: proxy
-    stacks:
-      - cloudflared
-      - npm
-      - whoogle
-      - adguardhome
-
-  pre_tasks:
-    - name: Assert vault token is present
-      ansible.builtin.assert:
-        that:
-          - cloudflared_tunnel_token is defined
-          - cloudflared_tunnel_token | length > 0
-        fail_msg: "cloudflared_tunnel_token missing — add it to vault.yml"
-
-    - name: Mount NFS storage from srv6 and replace /opt/stacks symlink
-      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/nfs_client.yml"
-
-    - name: Enforce /opt/stacks ownership
-      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/stacks_owner.yml"
-
-    - name: Ensure shared Docker network exists
-      community.docker.docker_network:
-        name: "{{ docker_network }}"
-        state: present
-
-    - name: Free port 53 for AdGuard Home
-      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/free_port53.yml"
-
-  tasks:
-    - name: Deploy cloudflared stack
-      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
-      vars:
-        stack_name: cloudflared
-      tags: cloudflared
-
-    - name: Deploy Nginx Proxy Manager stack
-      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
-      vars:
-        stack_name: npm
-      tags: npm
-
-    - name: Deploy Whoogle stack
-      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
-      vars:
-        stack_name: whoogle
-      tags: whoogle
-
-    - name: Deploy AdGuard Home stack
-      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
-      vars:
-        stack_name: adguardhome
-      tags: adguardhome
+- import_playbook: cloudflared.yml
+- import_playbook: npm.yml
+- import_playbook: whoogle.yml
+- import_playbook: adguardhome.yml

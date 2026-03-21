@@ -1,0 +1,108 @@
+---
+# =============================================================================
+# espocrm.yml — Deploy PostgreSQL + EspoCRM stacks to srv4
+# Docs: https://docs.espocrm.com/administration/docker/
+#
+# Exposed via cloudflared tunnel through NPM on srv1.
+# EspoCRM requires config-internal.php to be injected after first startup
+# to switch from MySQL driver to pdo_pgsql (PostgreSQL).
+#
+# Vault: playbooks/vars/espocrm_vault.yml
+#   espocrm_db_password   : database password
+#   espocrm_admin_password: EspoCRM admin UI password
+#
+# Run:
+#   ansible-playbook playbooks/espocrm.yml -i inventory.yml --ask-vault-pass --become
+# =============================================================================
+
+- name: Deploy EspoCRM stack to srv4
+  hosts: srv4
+  become: true
+  gather_facts: true
+
+  vars_files:
+    - vars/espocrm_vault.yml
+
+  vars:
+    stacks_root: /opt/stacks
+    docker_network: proxy
+
+  pre_tasks:
+    - name: Assert required vault variables are present
+      ansible.builtin.assert:
+        that:
+          - espocrm_db_password is defined and espocrm_db_password | length > 0
+          - espocrm_admin_password is defined and espocrm_admin_password | length > 0
+        fail_msg: "Missing vault vars — populate and encrypt playbooks/vars/espocrm_vault.yml"
+
+    - name: Mount NFS storage from srv6
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/nfs_client.yml"
+
+    - name: Enforce /opt/stacks ownership
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/stacks_owner.yml"
+
+    - name: Ensure shared Docker network exists
+      community.docker.docker_network:
+        name: "{{ docker_network }}"
+        state: present
+
+  tasks:
+    - name: Deploy postgres-espocrm stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: postgres-espocrm
+
+    - name: Wait for postgres-espocrm to be ready
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 5435
+        delay: 5
+        timeout: 60
+        msg: "Timed out waiting for postgres-espocrm on port 5435"
+
+    - name: Deploy espocrm stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: espocrm
+
+    - name: Wait for EspoCRM HTTP port to be ready
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 8083
+        delay: 10
+        timeout: 120
+        msg: "Timed out waiting for EspoCRM on port 8083"
+
+    - name: Stage config-internal.php on remote host
+      ansible.builtin.copy:
+        content: |
+          <?php
+          return [
+            'database' => [
+              'platform' => 'Postgresql',
+              'driver'   => 'pdo_pgsql',
+            ],
+          ];
+        dest: /tmp/espocrm-config-internal.php
+        owner: root
+        mode: "0600"
+
+    - name: Ensure EspoCRM data directory exists in container
+      ansible.builtin.command:
+        cmd: docker exec espocrm mkdir -p /var/www/html/data
+      changed_when: false
+
+    - name: Inject config-internal.php into container
+      ansible.builtin.command:
+        cmd: docker cp /tmp/espocrm-config-internal.php espocrm:/var/www/html/data/config-internal.php
+      changed_when: true
+
+    - name: Remove staged config-internal.php from remote host
+      ansible.builtin.file:
+        path: /tmp/espocrm-config-internal.php
+        state: absent
+
+    - name: Fix /var/www/html/data ownership in container
+      ansible.builtin.command:
+        cmd: docker exec espocrm chown -R www-data:www-data /var/www/html/data
+      changed_when: false

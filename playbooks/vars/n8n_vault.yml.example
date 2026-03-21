@@ -1,0 +1,13 @@
+---
+# n8n_vault.yml — secrets for the n8n stack (srv4)
+#
+# Setup:
+#   cp n8n_vault.yml.example n8n_vault.yml
+#   ansible-vault encrypt playbooks/vars/n8n_vault.yml
+#
+# Generate values:
+#   n8n_db_password    : openssl rand -hex 24
+#   n8n_encryption_key : openssl rand -hex 16
+
+n8n_db_password: "CHANGE_ME"
+n8n_encryption_key: "CHANGE_ME"

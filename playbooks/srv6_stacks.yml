@@ -1,327 +1,58 @@
-# Repo path: ~/git/ansible/playbooks/srv6_stacks.yml
 ---
 # =============================================================================
-# srv6_stacks.yml — Deploy Docker Compose stacks to srv6 (192.168.68.16)
+# srv6_stacks.yml — Orchestrator: deploy all stacks to srv6
 # Docs:
-#   Paperless-ngx   : https://docs.paperless-ngx.com/setup/#docker
-#   Paperless-AI    : https://github.com/clusterzx/paperless-ai
-#   Paperless-GPT   : https://github.com/icereed/paperless-gpt
-#   rsyslog         : https://www.rsyslog.com/
-#   Cockpit         : https://cockpit-project.org/
-#   Simple Office   : (internal — custom Node.js/React + OnlyOffice SaaS platform)
-#   Authentik       : https://docs.goauthentik.io/docs/install-config/install/docker-compose
+#   Paperless-ngx: https://docs.paperless-ngx.com/setup/#docker
+#   Authentik    : https://docs.goauthentik.io/docs/install-config/install/docker-compose
+#   Simple Office: (internal — custom Node.js/React + OnlyOffice)
+#   OmniMail     : https://mail.techsimple.dev
 #
-# Exposed via cloudflared tunnel through NPM on srv1:
-#   Paperless-ngx   NPM upstream: http://192.168.68.16:8086
-#   Authentik       NPM upstream: http://192.168.68.16:9000
-#   SO API          NPM upstream: http://192.168.68.16:8090
-#   SO Web          NPM upstream: http://192.168.68.16:8091
-#   OmniMail        NPM upstream: http://192.168.68.16:8025
+# This orchestrator imports individual app playbooks. To deploy a single app,
+# run its playbook directly (e.g. ansible-playbook playbooks/paperless.yml).
 #
-# Internal LAN only:
-#   rsyslog         514/tcp 514/udp (syslog receiver)
-#   Cockpit         9090/tcp
-#   OnlyOffice (SO) 8092/tcp — internal only, NOT exposed via NPM
-#   OmniMail Redis  internal only
+# srv6 is the NFS server — it must be deployed before srv1/3/4/5 stacks.
+# Server-level services (rsyslog, cockpit) are handled here before app imports.
 #
-# LLM backend: Ollama on srv5 (192.168.68.15:11434)
+# Two-pass deployment notes:
+#   Paperless-ai/gpt: require Paperless-ngx API token — see paperless.yml header
+#   Simple Office   : requires Authentik OIDC config — see simple-office.yml header
 #
 # Port assignments on srv6:
 #   5437 — postgres-paperless
 #   5438 — postgres-simple-office
 #   5439 — postgres-authentik
-#   8086 — paperless-ngx
-#   8090 — simple-office-api
-#   8091 — simple-office-web
-#   8025 — omnimail (frontend/nginx)
-#   8092 — onlyoffice-so (LAN only)
-#   9000 — authentik
+#   8086 — paperless-ngx        (NPM upstream)
+#   8090 — simple-office-api    (NPM upstream)
+#   8091 — simple-office-web    (NPM upstream)
+#   8025 — omnimail             (NPM upstream)
+#   8092 — onlyoffice-so        (LAN only)
+#   9000 — authentik            (NPM upstream)
 #
-# Vault requirements (ansible-vault edit group_vars/all/vault.yml):
-#   --- Paperless ---
-#   paperless_db_password       : "YOUR_PASSWORD"
-#   paperless_secret_key        : "YOUR_SECRET"      # openssl rand -hex 32
-#   paperless_admin_password    : "YOUR_PASSWORD"
-#   --- OmniMail ---
-#   omnimail_db_password        : "YOUR_PASSWORD"    # openssl rand -hex 24
-#   omnimail_session_secret     : "YOUR_SECRET"      # openssl rand -hex 32
-#   omnimail_encryption_key     : "YOUR_SECRET"      # openssl rand -hex 32
-#   --- Simple Office ---
-#   so_db_password              : "YOUR_PASSWORD"    # openssl rand -hex 24
-#   so_jwt_secret               : "YOUR_SECRET"      # openssl rand -hex 32
-#   so_onlyoffice_jwt_secret    : "YOUR_SECRET"      # openssl rand -hex 32
-#   so_session_secret           : "YOUR_SECRET"      # openssl rand -hex 32
-#   so_oidc_client_id           : "FROM_AUTHENTIK"   # added after pass 1
-#   so_oidc_client_secret       : "FROM_AUTHENTIK"   # added after pass 1
-#   --- Authentik ---
-#   authentik_db_password       : "YOUR_PASSWORD"    # openssl rand -hex 24
-#   authentik_secret_key        : "YOUR_SECRET"      # openssl rand -hex 60
+# Vault requirements:
+#   playbooks/vars/paperless_vault.yml     — paperless_* vars
+#   playbooks/vars/authentik_vault.yml     — authentik_* vars
+#   playbooks/vars/simple_office_vault.yml — so_* and onlyoffice_* vars
+#   playbooks/vars/omnimail_vault.yml      — omnimail_* vars
 #
-# Run:
-#   ansible-playbook playbooks/srv6_stacks.yml -i inventory.yml --limit srv6 --ask-vault-pass --become
+# Run all stacks:
+#   ansible-playbook playbooks/srv6_stacks.yml -i inventory.yml --ask-vault-pass --become
 # =============================================================================
 
-- name: Deploy Docker Compose stacks to srv6
+# ── Server infrastructure (rsyslog + cockpit) ─────────────────────────────────
+- name: Configure srv6 server infrastructure
   hosts: srv6
   become: true
   gather_facts: true
 
-  vars:
-    stacks_root: /opt/stacks
-    docker_network: proxy
-    ollama_url: "http://192.168.68.15:11434"
-    stack_dirs:
-      - postgres-paperless
-      - postgres-simple-office
-      - postgres-authentik
-      - paperless
-      - paperless-ai
-      - paperless-gpt
-      - authentik
-      - redis-simple-office
-      - onlyoffice-so
-      - simple-office-api
-      - simple-office-web
-      - omnimail
-
-  pre_tasks:
-    - name: Configure NFS server and local /opt/stacks symlink
-      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/nfs_server.yml"
-
-    - name: Enforce /opt/stacks ownership
-      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/stacks_owner.yml"
-
-    - name: Assert required vault variables are present
-      ansible.builtin.assert:
-        that:
-          # Paperless
-          - paperless_db_password is defined and paperless_db_password | length > 0
-          - paperless_secret_key is defined and paperless_secret_key | length > 0
-          - paperless_admin_password is defined and paperless_admin_password | length > 0
-          # OmniMail
-          - omnimail_db_password is defined and omnimail_db_password | length > 0
-          - omnimail_session_secret is defined and omnimail_session_secret | length > 0
-          - omnimail_encryption_key is defined and omnimail_encryption_key | length > 0
-          # Simple Office
-          - so_db_password is defined and so_db_password | length > 0
-          - so_jwt_secret is defined and so_jwt_secret | length > 0
-          - so_onlyoffice_jwt_secret is defined and so_onlyoffice_jwt_secret | length > 0
-          - so_session_secret is defined and so_session_secret | length > 0
-          # Authentik
-          - authentik_db_password is defined and authentik_db_password | length > 0
-          - authentik_secret_key is defined and authentik_secret_key | length > 0
-        fail_msg: >
-          Missing vault variables. See playbook header for full list.
-
-    - name: Ensure stack directories exist
-      ansible.builtin.file:
-        path: "{{ stacks_root }}/{{ item }}"
-        state: directory
-        owner: root
-        group: root
-        mode: "0755"
-      loop: "{{ stack_dirs }}"
-
-    - name: Ensure Paperless consume and media directories exist
-      ansible.builtin.file:
-        path: "{{ stacks_root }}/paperless/{{ item }}"
-        state: directory
-        owner: 1000
-        group: 1000
-        mode: "0755"
-      loop:
-        - consume
-        - media
-        - export
-        - data
-
-    - name: Ensure Simple Office storage directory exists
-      ansible.builtin.file:
-        path: "{{ stacks_root }}/simple-office-api/storage"
-        state: directory
-        owner: root
-        group: docker-admin
-        mode: "0775"
-
-    - name: Ensure Authentik media and certs directories exist
-      ansible.builtin.file:
-        path: "{{ stacks_root }}/authentik/{{ item }}"
-        state: directory
-        owner: root
-        group: docker-admin
-        mode: "0775"
-      loop:
-        - media
-        - certs
-        - custom-templates
-
-    - name: Ensure shared Docker network exists
-      community.docker.docker_network:
-        name: "{{ docker_network }}"
-        state: present
-
+  tasks:
     - name: Install and configure rsyslog server
       ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/rsyslog_server.yml"
 
     - name: Install and configure Cockpit
       ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/cockpit.yml"
 
-  tasks:
-    # ── Paperless stack ───────────────────────────────────────────────────────
-    - name: Deploy postgres-paperless stack
-      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
-      vars:
-        stack_name: postgres-paperless
-      tags: postgres-paperless
-
-    - name: Wait for postgres-paperless to be ready
-      ansible.builtin.wait_for:
-        host: "{{ ansible_host }}"
-        port: 5437
-        delay: 5
-        timeout: 60
-        msg: "Timed out waiting for postgres-paperless on port 5437"
-
-    - name: Deploy paperless stack
-      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
-      vars:
-        stack_name: paperless
-      tags: paperless
-
-    - name: Wait for Paperless-ngx to be ready
-      ansible.builtin.wait_for:
-        host: "{{ ansible_host }}"
-        port: 8086
-        delay: 10
-        timeout: 120
-        msg: "Timed out waiting for Paperless-ngx on port 8086"
-
-    - name: Deploy paperless-ai stack
-      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
-      vars:
-        stack_name: paperless-ai
-      tags: paperless-ai
-
-    - name: Deploy paperless-gpt stack
-      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
-      vars:
-        stack_name: paperless-gpt
-      tags: paperless-gpt
-
-    # ── Authentik SSO stack ───────────────────────────────────────────────────
-    - name: Deploy postgres-authentik stack
-      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
-      vars:
-        stack_name: postgres-authentik
-      tags: postgres-authentik
-
-    - name: Wait for postgres-authentik to be ready
-      ansible.builtin.wait_for:
-        host: "{{ ansible_host }}"
-        port: 5439
-        delay: 5
-        timeout: 60
-        msg: "Timed out waiting for postgres-authentik on port 5439"
-
-    - name: Deploy authentik stack
-      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
-      vars:
-        stack_name: authentik
-      tags: authentik
-
-    - name: Wait for Authentik to be ready
-      ansible.builtin.wait_for:
-        host: "{{ ansible_host }}"
-        port: 9000
-        delay: 15
-        timeout: 180
-        msg: "Timed out waiting for Authentik on port 9000"
-
-    # ── Simple Office stack ───────────────────────────────────────────────────
-    # Two-pass deployment:
-    #   Pass 1: Deploy postgres-simple-office, redis-simple-office, onlyoffice-so
-    #           Complete Authentik OIDC client setup (see checklist below)
-    #           Add so_oidc_client_id and so_oidc_client_secret to vault
-    #   Pass 2: Uncomment and deploy simple-office-api and simple-office-web
-    #
-    # Authentik OIDC checklist (one-time, manual — between pass 1 and pass 2):
-    #   1. Login to Authentik at https://auth.techsimple.dev/if/flow/initial-setup/
-    #   2. Admin → Applications → Providers → Create OAuth2/OpenID Provider
-    #      Name: simple-office
-    #      Redirect URI: https://app.techsimple.dev/api/v1/auth/callback
-    #      Note the Client ID and Client Secret
-    #   3. Admin → Applications → Applications → Create
-    #      Name: Simple Office, Slug: simple-office, Provider: simple-office
-    #   4. ansible-vault edit group_vars/all/vault.yml
-    #      Add: so_oidc_client_id, so_oidc_client_secret
-    #   5. Re-run playbook (pass 2) to deploy simple-office-api and simple-office-web
-
-    - name: Deploy postgres-simple-office stack
-      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
-      vars:
-        stack_name: postgres-simple-office
-      tags: postgres-simple-office
-
-    - name: Wait for postgres-simple-office to be ready
-      ansible.builtin.wait_for:
-        host: "{{ ansible_host }}"
-        port: 5438
-        delay: 5
-        timeout: 60
-        msg: "Timed out waiting for postgres-simple-office on port 5438"
-
-    - name: Deploy redis-simple-office stack
-      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
-      vars:
-        stack_name: redis-simple-office
-      tags: redis-simple-office
-
-    - name: Deploy onlyoffice-so stack
-      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
-      vars:
-        stack_name: onlyoffice-so
-      tags: onlyoffice-so
-
-    # NOTE: Comment out the two tasks below until Authentik OIDC client is configured
-    #       and so_oidc_client_id / so_oidc_client_secret are added to vault.
-    - name: Deploy simple-office-api stack
-      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
-      vars:
-        stack_name: simple-office-api
-      tags: simple-office-api
-
-    - name: Deploy simple-office-web stack
-      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
-      vars:
-        stack_name: simple-office-web
-      tags: simple-office-web
-
-    # ── OmniMail stack ────────────────────────────────────────────────────────
-    # Exposed via NPM → Cloudflare tunnel: https://mail.techsimple.dev
-    # NPM upstream: http://192.168.68.16:8025
-    - name: Sync OmniMail source code to srv6
-      ansible.builtin.synchronize:
-        src: "{{ lookup('env', 'HOME') }}/git/omnimail/"
-        dest: "{{ stacks_root }}/omnimail/"
-        rsync_opts:
-          - "--exclude=node_modules"
-          - "--exclude=.env"
-          - "--exclude=dist"
-          - "--exclude=.git"
-          - "--exclude=.claude"
-      tags: omnimail
-
-    - name: Deploy omnimail stack
-      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
-      vars:
-        stack_name: omnimail
-      tags: omnimail
-
-    - name: Wait for OmniMail to be ready
-      ansible.builtin.wait_for:
-        host: "{{ ansible_host }}"
-        port: 8025
-        delay: 10
-        timeout: 180
-        msg: "Timed out waiting for OmniMail on port 8025"
-      tags: omnimail
+# ── Application stacks ────────────────────────────────────────────────────────
+- import_playbook: paperless.yml
+- import_playbook: authentik.yml
+- import_playbook: simple-office.yml
+- import_playbook: omnimail.yml

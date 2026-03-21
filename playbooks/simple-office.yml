@@ -1,0 +1,143 @@
+---
+# =============================================================================
+# simple-office.yml — Deploy Simple Office suite to srv6
+# Components: PostgreSQL, Redis, OnlyOffice document server, SO API, SO Web
+#
+# Two-pass deployment — Authentik OIDC must be configured between passes:
+#
+#   Pass 1 (run with --tags infra):
+#     Deploys: postgres-simple-office, redis-simple-office, onlyoffice-so
+#
+#   Between passes — configure Authentik OIDC (one-time manual steps):
+#     1. Login to Authentik: https://auth.techsimple.dev/if/flow/initial-setup/
+#     2. Admin → Applications → Providers → Create OAuth2/OpenID Provider
+#        Name: simple-office
+#        Redirect URI: https://app.techsimple.dev/api/v1/auth/callback
+#        Note the Client ID and Client Secret
+#     3. Admin → Applications → Applications → Create
+#        Name: Simple Office, Slug: simple-office, Provider: simple-office
+#     4. ansible-vault edit playbooks/vars/simple_office_vault.yml
+#        Set so_oidc_client_id and so_oidc_client_secret
+#
+#   Pass 2 (run without --tags to deploy everything):
+#     Deploys all components including simple-office-api and simple-office-web
+#
+# Ports:
+#   5438 — postgres-simple-office
+#   8090 — simple-office-api (NPM upstream)
+#   8091 — simple-office-web (NPM upstream)
+#   8092 — onlyoffice-so (LAN only — NOT exposed via NPM)
+#
+# Vault: playbooks/vars/simple_office_vault.yml
+#   so_db_password           : database password
+#   so_jwt_secret            : app JWT secret
+#   so_onlyoffice_jwt_secret : OnlyOffice JWT secret
+#   so_session_secret        : session secret
+#   so_oidc_client_id        : from Authentik (pass 2)
+#   so_oidc_client_secret    : from Authentik (pass 2)
+#   onlyoffice_db_password   : OnlyOffice database password
+#   onlyoffice_jwt_secret    : OnlyOffice JWT secret
+#
+# Run:
+#   # Pass 1:
+#   ansible-playbook playbooks/simple-office.yml -i inventory.yml --ask-vault-pass --become --tags infra
+#   # Pass 2:
+#   ansible-playbook playbooks/simple-office.yml -i inventory.yml --ask-vault-pass --become
+# =============================================================================
+
+- name: Deploy Simple Office stack to srv6
+  hosts: srv6
+  become: true
+  gather_facts: true
+
+  vars_files:
+    - vars/simple_office_vault.yml
+
+  vars:
+    stacks_root: /opt/stacks
+    docker_network: proxy
+
+  pre_tasks:
+    - name: Assert required vault variables are present
+      ansible.builtin.assert:
+        that:
+          - so_db_password is defined and so_db_password | length > 0
+          - so_jwt_secret is defined and so_jwt_secret | length > 0
+          - so_onlyoffice_jwt_secret is defined and so_onlyoffice_jwt_secret | length > 0
+          - so_session_secret is defined and so_session_secret | length > 0
+        fail_msg: "Missing vault vars — populate and encrypt playbooks/vars/simple_office_vault.yml"
+
+    - name: Configure NFS server on srv6
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/nfs_server.yml"
+
+    - name: Enforce /opt/stacks ownership
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/stacks_owner.yml"
+
+    - name: Ensure shared Docker network exists
+      community.docker.docker_network:
+        name: "{{ docker_network }}"
+        state: present
+
+    - name: Ensure Simple Office stack directories exist
+      ansible.builtin.file:
+        path: "{{ stacks_root }}/{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+      loop:
+        - postgres-simple-office
+        - redis-simple-office
+        - onlyoffice-so
+        - simple-office-api
+        - simple-office-web
+
+    - name: Ensure Simple Office API storage directory exists
+      ansible.builtin.file:
+        path: "{{ stacks_root }}/simple-office-api/storage"
+        state: directory
+        owner: root
+        group: docker-admin
+        mode: "0775"
+
+  tasks:
+    # ── Pass 1 — infrastructure ───────────────────────────────────────────────
+    - name: Deploy postgres-simple-office stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: postgres-simple-office
+      tags: [infra, postgres-simple-office]
+
+    - name: Wait for postgres-simple-office to be ready
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 5438
+        delay: 5
+        timeout: 60
+        msg: "Timed out waiting for postgres-simple-office on port 5438"
+      tags: [infra, postgres-simple-office]
+
+    - name: Deploy redis-simple-office stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: redis-simple-office
+      tags: [infra, redis-simple-office]
+
+    - name: Deploy onlyoffice-so stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: onlyoffice-so
+      tags: [infra, onlyoffice-so]
+
+    # ── Pass 2 — requires so_oidc_client_id / so_oidc_client_secret in vault ─
+    - name: Deploy simple-office-api stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: simple-office-api
+      tags: simple-office-api
+
+    - name: Deploy simple-office-web stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: simple-office-web
+      tags: simple-office-web

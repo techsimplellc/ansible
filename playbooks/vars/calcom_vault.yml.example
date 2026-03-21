@@ -1,0 +1,15 @@
+---
+# calcom_vault.yml — secrets for the cal.com stack (srv4)
+#
+# Setup:
+#   cp calcom_vault.yml.example calcom_vault.yml
+#   ansible-vault encrypt playbooks/vars/calcom_vault.yml
+#
+# Generate values:
+#   calcom_db_password      : openssl rand -hex 24
+#   calcom_nextauth_secret  : openssl rand -base64 32
+#   calendso_encryption_key : openssl rand -hex 16
+
+calcom_db_password: "CHANGE_ME"
+calcom_nextauth_secret: "CHANGE_ME"
+calendso_encryption_key: "CHANGE_ME"

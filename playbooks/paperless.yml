@@ -1,0 +1,133 @@
+---
+# =============================================================================
+# paperless.yml — Deploy PostgreSQL + Paperless-ngx + AI/GPT addons to srv6
+# Docs: https://docs.paperless-ngx.com/setup/#docker
+#       https://github.com/clusterzx/paperless-ai
+#       https://github.com/icereed/paperless-gpt
+#
+# Two-pass deployment for paperless-ai and paperless-gpt:
+#   Pass 1: Run this playbook — deploys postgres-paperless + paperless only
+#           (paperless-ai and paperless-gpt tasks are tagged; skip with --skip-tags ai,gpt)
+#   Between passes:
+#     1. Log in to Paperless-ngx at https://paperless.techsimple.dev
+#     2. Profile → API Token → copy token
+#     3. ansible-vault edit playbooks/vars/paperless_vault.yml
+#        Set paperless_api_token to the generated token
+#   Pass 2: Run this playbook again (all tasks run)
+#
+# LLM backend: Ollama on srv5 at http://192.168.68.15:11434
+# NPM upstream: http://192.168.68.16:8086
+#
+# Vault: playbooks/vars/paperless_vault.yml
+#   paperless_db_password   : database password
+#   paperless_secret_key    : app secret key (openssl rand -hex 32)
+#   paperless_admin_password: initial admin password
+#   paperless_api_token     : generated after first login (pass 2 only)
+#
+# Run:
+#   ansible-playbook playbooks/paperless.yml -i inventory.yml --ask-vault-pass --become
+#   # Pass 1 only:
+#   ansible-playbook playbooks/paperless.yml -i inventory.yml --ask-vault-pass --become --skip-tags ai,gpt
+# =============================================================================
+
+- name: Deploy Paperless-ngx stack to srv6
+  hosts: srv6
+  become: true
+  gather_facts: true
+
+  vars_files:
+    - vars/paperless_vault.yml
+
+  vars:
+    stacks_root: /opt/stacks
+    docker_network: proxy
+    ollama_url: "http://192.168.68.15:11434"
+
+  pre_tasks:
+    - name: Assert required vault variables are present
+      ansible.builtin.assert:
+        that:
+          - paperless_db_password is defined and paperless_db_password | length > 0
+          - paperless_secret_key is defined and paperless_secret_key | length > 0
+          - paperless_admin_password is defined and paperless_admin_password | length > 0
+        fail_msg: "Missing vault vars — populate and encrypt playbooks/vars/paperless_vault.yml"
+
+    - name: Configure NFS server on srv6
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/nfs_server.yml"
+
+    - name: Enforce /opt/stacks ownership
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/stacks_owner.yml"
+
+    - name: Ensure shared Docker network exists
+      community.docker.docker_network:
+        name: "{{ docker_network }}"
+        state: present
+
+    - name: Ensure postgres-paperless stack directory exists
+      ansible.builtin.file:
+        path: "{{ stacks_root }}/postgres-paperless"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Ensure paperless stack directory exists
+      ansible.builtin.file:
+        path: "{{ stacks_root }}/paperless"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Ensure Paperless consume/media/export/data directories exist
+      ansible.builtin.file:
+        path: "{{ stacks_root }}/paperless/{{ item }}"
+        state: directory
+        owner: 1000
+        group: 1000
+        mode: "0755"
+      loop:
+        - consume
+        - media
+        - export
+        - data
+
+  tasks:
+    - name: Deploy postgres-paperless stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: postgres-paperless
+
+    - name: Wait for postgres-paperless to be ready
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 5437
+        delay: 5
+        timeout: 60
+        msg: "Timed out waiting for postgres-paperless on port 5437"
+
+    - name: Deploy paperless stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: paperless
+
+    - name: Wait for Paperless-ngx to be ready
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 8086
+        delay: 10
+        timeout: 120
+        msg: "Timed out waiting for Paperless-ngx on port 8086"
+
+    # ── Pass 2 only — requires paperless_api_token in vault ───────────────────
+    - name: Deploy paperless-ai stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: paperless-ai
+      tags: ai
+
+    - name: Deploy paperless-gpt stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: paperless-gpt
+      tags: gpt

@@ -1,0 +1,13 @@
+---
+# espocrm_vault.yml — secrets for the EspoCRM stack (srv4)
+#
+# Setup:
+#   cp espocrm_vault.yml.example espocrm_vault.yml
+#   ansible-vault encrypt playbooks/vars/espocrm_vault.yml
+#
+# Generate values:
+#   espocrm_db_password   : openssl rand -hex 24
+#   espocrm_admin_password: choose a strong password
+
+espocrm_db_password: "CHANGE_ME"
+espocrm_admin_password: "CHANGE_ME"

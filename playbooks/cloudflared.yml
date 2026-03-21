@@ -1,0 +1,48 @@
+---
+# =============================================================================
+# cloudflared.yml — Deploy cloudflared tunnel stack to srv1
+# Docs: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/
+#
+# Vault: playbooks/vars/cloudflared_vault.yml
+#   cloudflared_tunnel_token: token from Zero Trust dashboard
+#
+# Run:
+#   ansible-playbook playbooks/cloudflared.yml -i inventory.yml --ask-vault-pass --become
+# =============================================================================
+
+- name: Deploy cloudflared stack to srv1
+  hosts: srv1
+  become: true
+  gather_facts: true
+
+  vars_files:
+    - vars/cloudflared_vault.yml
+
+  vars:
+    stacks_root: /opt/stacks
+    docker_network: proxy
+
+  pre_tasks:
+    - name: Assert cloudflared_tunnel_token is set
+      ansible.builtin.assert:
+        that:
+          - cloudflared_tunnel_token is defined
+          - cloudflared_tunnel_token | length > 0
+        fail_msg: "cloudflared_tunnel_token missing — populate and encrypt playbooks/vars/cloudflared_vault.yml"
+
+    - name: Mount NFS storage from srv6
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/nfs_client.yml"
+
+    - name: Enforce /opt/stacks ownership
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/stacks_owner.yml"
+
+    - name: Ensure shared Docker network exists
+      community.docker.docker_network:
+        name: "{{ docker_network }}"
+        state: present
+
+  tasks:
+    - name: Deploy cloudflared stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: cloudflared

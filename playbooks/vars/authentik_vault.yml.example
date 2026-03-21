@@ -1,0 +1,13 @@
+---
+# authentik_vault.yml — secrets for the Authentik SSO stack (srv6)
+#
+# Setup:
+#   cp authentik_vault.yml.example authentik_vault.yml
+#   ansible-vault encrypt playbooks/vars/authentik_vault.yml
+#
+# Generate values:
+#   authentik_db_password : openssl rand -hex 24
+#   authentik_secret_key  : openssl rand -hex 60
+
+authentik_db_password: "CHANGE_ME"
+authentik_secret_key: "CHANGE_ME"

@@ -21,13 +21,19 @@
 #              Networks → Tunnels → <tunnel> → Public Hostnames
 #              Service: http://192.168.68.16:8025
 #
-# Vault requirements (ansible-vault edit group_vars/all/vault.yml):
-#   omnimail_db_password    : "YOUR_PASSWORD"
-#   omnimail_session_secret : "$(openssl rand -hex 64)"
-#   omnimail_encryption_key : "$(openssl rand -hex 32)"
+# Vault: playbooks/vars/omnimail_vault.yml
+#   omnimail_db_password        : database password (openssl rand -hex 24)
+#   omnimail_session_secret     : session secret (openssl rand -hex 32)
+#   omnimail_encryption_key     : AES-256-GCM key (openssl rand -hex 32)
+#   omnimail_google_client_id   : Google OAuth client ID (or blank to disable)
+#   omnimail_google_client_secret
+#   omnimail_microsoft_client_id: Microsoft OAuth client ID (or blank to disable)
+#   omnimail_microsoft_client_secret
+#   omnimail_yahoo_client_id    : Yahoo OAuth client ID (or blank to disable)
+#   omnimail_yahoo_client_secret
 #
 # Run:
-#   ansible-playbook playbooks/omnimail.yml -i inventory.yml --limit srv6 --ask-vault-pass --become
+#   ansible-playbook playbooks/omnimail.yml -i inventory.yml --ask-vault-pass --become
 #
 # Tag-scoped re-deploys:
 #   --tags build   rebuild and restart the stack only (skip sync/vault checks)
@@ -38,6 +44,9 @@
   hosts: srv6
   become: true
   gather_facts: true
+
+  vars_files:
+    - vars/omnimail_vault.yml
 
   vars:
     stacks_root: /opt/stacks
@@ -53,9 +62,7 @@
           - omnimail_db_password is defined and omnimail_db_password | length > 0
           - omnimail_session_secret is defined and omnimail_session_secret | length > 0
           - omnimail_encryption_key is defined and omnimail_encryption_key | length > 0
-        fail_msg: >
-          Missing vault variables for OmniMail. Ensure all required vars are
-          set in group_vars/all/vault.yml. See playbook header for full list.
+        fail_msg: "Missing vault vars — populate and encrypt playbooks/vars/omnimail_vault.yml"
       tags: always
 
     - name: Configure NFS server and local /opt/stacks symlink
