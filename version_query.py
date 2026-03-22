@@ -3,8 +3,13 @@
 version_query.py — Query GitHub for latest release info for all homelab app stacks.
 
 Reads current pinned versions from playbooks/vars/app_versions.yml and compares
-against latest GitHub releases. Flags releases <= 30 days old as potentially
-unstable, and reports the previous stable release as the safer pin candidate.
+against latest GitHub releases.
+
+The Pinned column shows the RECOMMENDED version to set in app_versions.yml:
+  - Latest release is > 30 days old  → recommend latest
+  - Latest release is <= 30 days old → recommend previous stable (30-day rule)
+  RED   = app_versions.yml needs to be updated to the recommended version
+  GREEN = app_versions.yml already matches the recommendation
 
 Usage:
   python3 version_query.py                    # unauthenticated (60 req/hr)
@@ -204,45 +209,51 @@ def print_row(app_name, pinned, latest_tag, latest_dt, prev_tag, prev_dt, error=
     is_new    = age_days <= NEW_RELEASE_DAYS
     date_str  = format_date(latest_dt)
     age_label = age_str(latest_dt)
-
-    pin_norm    = normalize_tag(pinned)
-    latest_norm = normalize_tag(latest_tag)
-    is_current  = pin_norm == latest_norm
     is_unpinned = pinned == "REPLACE_ME"
 
-    # Colour the pinned version
-    if is_unpinned:
-        pinned_col = f"{RED}{pinned:<{COL_PINNED}}{RESET}"
-    elif is_current:
-        pinned_col = f"{GREEN}{pinned:<{COL_PINNED}}{RESET}"
+    # ── Determine recommended pin (the 30-day rule) ───────────────────────────
+    # If the latest release is too fresh, recommend the previous stable release.
+    if is_new and prev_tag:
+        recommended = prev_tag
+        rec_dt      = prev_dt
     else:
-        pinned_col = f"{YELLOW}{pinned:<{COL_PINNED}}{RESET}"
+        recommended = latest_tag
+        rec_dt      = latest_dt
 
-    # Colour the latest tag
+    rec_display = normalize_tag(recommended)
+    is_current  = normalize_tag(pinned) == normalize_tag(recommended)
+
+    # ── Pinned column: show recommended value, colour signals action needed ───
+    if is_unpinned or not is_current:
+        pinned_col = f"{RED}{rec_display:<{COL_PINNED}}{RESET}"
+    else:
+        pinned_col = f"{GREEN}{rec_display:<{COL_PINNED}}{RESET}"
+
+    # ── Latest column: flag when 30-day rule is active ────────────────────────
     if is_new:
-        latest_col  = f"{YELLOW}{latest_tag:<{COL_LATEST}}{RESET}"
-        date_col    = f"{YELLOW}{date_str:<{COL_DATE}}{RESET}"
-        age_col     = f"{YELLOW}{age_label:<{COL_AGE}}{RESET}"
+        latest_col = f"{YELLOW}{latest_tag:<{COL_LATEST}}{RESET}"
+        date_col   = f"{YELLOW}{date_str:<{COL_DATE}}{RESET}"
+        age_col    = f"{YELLOW}{age_label:<{COL_AGE}}{RESET}"
     else:
-        latest_col  = f"{latest_tag:<{COL_LATEST}}"
-        date_col    = f"{date_str:<{COL_DATE}}"
-        age_col     = f"{age_label:<{COL_AGE}}"
+        latest_col = f"{latest_tag:<{COL_LATEST}}"
+        date_col   = f"{date_str:<{COL_DATE}}"
+        age_col    = f"{age_label:<{COL_AGE}}"
 
-    # Build notes
+    # ── Notes ─────────────────────────────────────────────────────────────────
     notes_parts = []
+
     if is_unpinned:
         notes_parts.append(f"{RED}not pinned{RESET}")
     elif not is_current:
-        notes_parts.append(f"{YELLOW}update available{RESET}")
+        notes_parts.append(f"currently: {pinned}")
 
     if is_new:
-        flag = f"{YELLOW}⚠ released {age_days}d ago{RESET}"
+        note = f"{YELLOW}⚠ latest {age_days}d old{RESET}"
         if prev_tag and prev_dt:
-            flag += (
-                f"{YELLOW} — consider: {normalize_tag(prev_tag)}"
-                f" ({format_date(prev_dt)}, {age_str(prev_dt)}){RESET}"
-            )
-        notes_parts.append(flag)
+            note += f"{YELLOW} — prev: {normalize_tag(prev_tag)} ({format_date(prev_dt)}){RESET}"
+        else:
+            note += f"{YELLOW} — no previous release found{RESET}"
+        notes_parts.append(note)
 
     notes = "  ".join(notes_parts)
 
@@ -258,12 +269,11 @@ def print_row(app_name, pinned, latest_tag, latest_dt, prev_tag, prev_dt, error=
 
 def print_legend():
     print()
-    print(f"  {BOLD}Legend:{RESET}")
-    print(f"    {GREEN}green pinned{RESET}   — up to date")
-    print(f"    {YELLOW}yellow pinned{RESET}  — update available")
-    print(f"    {RED}red pinned{RESET}     — not pinned (REPLACE_ME)")
-    print(f"    {YELLOW}⚠{RESET}              — released within {NEW_RELEASE_DAYS} days; "
-          f"previous stable version shown as safer pin candidate")
+    print(f"  {BOLD}Legend  (Pinned column = recommended version to set in app_versions.yml):{RESET}")
+    print(f"    {GREEN}green{RESET}   — app_versions.yml already matches recommendation")
+    print(f"    {RED}red{RESET}     — app_versions.yml needs to be updated to this value")
+    print(f"    {YELLOW}⚠{RESET}       — latest release is ≤ {NEW_RELEASE_DAYS} days old; "
+          f"Pinned shows previous stable as the safer pin")
     print()
 
 
