@@ -12,11 +12,9 @@
 
 services:
   firefly-importer:
-    image: fireflyiii/data-importer:latest
+    image: fireflyiii/data-importer:{{ firefly_importer_version }}
     container_name: firefly-importer
     restart: unless-stopped
-    depends_on:
-      - firefly
     environment:
       FIREFLY_III_URL: "http://firefly:8080"
       FIREFLY_III_ACCESS_TOKEN: "{{ firefly_importer_token }}"

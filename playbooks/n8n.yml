@@ -19,6 +19,7 @@
   gather_facts: true
 
   vars_files:
+    - vars/app_versions.yml
     - vars/n8n_vault.yml
 
   vars:

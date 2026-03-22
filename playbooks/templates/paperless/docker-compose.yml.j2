@@ -15,7 +15,7 @@
 
 services:
   redis:
-    image: redis:7-alpine
+    image: redis:{{ redis_version }}
     container_name: paperless-redis
     restart: unless-stopped
     volumes:
@@ -24,7 +24,7 @@ services:
       - proxy
 
   paperless:
-    image: paperlessngx/paperless-ngx:latest
+    image: paperlessngx/paperless-ngx:{{ paperless_version }}
     container_name: paperless
     restart: unless-stopped
     depends_on:

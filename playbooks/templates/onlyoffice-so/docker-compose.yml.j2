@@ -19,7 +19,7 @@
 
 services:
   onlyoffice-so:
-    image: onlyoffice/documentserver:latest
+    image: onlyoffice/documentserver:{{ onlyoffice_version }}
     container_name: onlyoffice-so
     restart: unless-stopped
     environment:

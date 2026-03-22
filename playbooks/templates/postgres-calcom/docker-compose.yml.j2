@@ -5,7 +5,7 @@
 
 services:
   postgres-calcom:
-    image: postgres:16-alpine
+    image: postgres:{{ postgres_version }}
     container_name: postgres-calcom
     restart: unless-stopped
     environment:

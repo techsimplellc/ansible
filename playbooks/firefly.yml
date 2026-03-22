@@ -17,6 +17,7 @@
   gather_facts: true
 
   vars_files:
+    - vars/app_versions.yml
     - vars/firefly_vault.yml
 
   vars:

@@ -167,7 +167,7 @@ curl -sf http://localhost:8025 | grep -i "omnimail\|login" && echo "OK: OmniMail
 ```bash
 curl -sf https://paperless.techsimple.dev/accounts/login/ | grep -i "paperless" && echo "OK: Paperless external"
 curl -sf https://auth.techsimple.dev/if/flow/initial-setup/ | grep -i "authentik" && echo "OK: Authentik external"
-curl -sf https://mail.techsimple.dev | grep -i "omnimail\|login" && echo "OK: OmniMail external"
+curl -sf https://omnimail.techsimple.dev | grep -i "omnimail\|login" && echo "OK: OmniMail external"
 ```
 
 ---

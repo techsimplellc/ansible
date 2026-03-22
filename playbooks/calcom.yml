@@ -20,6 +20,7 @@
   gather_facts: true
 
   vars_files:
+    - vars/app_versions.yml
     - vars/calcom_vault.yml
 
   vars:

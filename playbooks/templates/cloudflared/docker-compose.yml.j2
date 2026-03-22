@@ -6,7 +6,7 @@
 
 services:
   cloudflared:
-    image: cloudflare/cloudflared:2026.3.0
+    image: cloudflare/cloudflared:{{ cloudflared_version }}
     container_name: cloudflared
     restart: unless-stopped
     command: tunnel --no-autoupdate run

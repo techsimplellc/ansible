@@ -51,6 +51,7 @@
   gather_facts: true
 
   vars_files:
+    - vars/app_versions.yml
     - vars/simple_office_vault.yml
 
   vars:

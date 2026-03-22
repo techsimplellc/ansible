@@ -5,7 +5,7 @@
 
 services:
   postgres-paperless:
-    image: postgres:16-alpine
+    image: postgres:{{ postgres_version }}
     container_name: postgres-paperless
     restart: unless-stopped
     environment:

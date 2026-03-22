@@ -5,7 +5,7 @@
 
 services:
   postgres-espocrm:
-    image: postgres:16-alpine
+    image: postgres:{{ postgres_version }}
     container_name: postgres-espocrm
     restart: unless-stopped
     environment:

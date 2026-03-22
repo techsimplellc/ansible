@@ -12,7 +12,7 @@
 
 services:
   firefly:
-    image: fireflyiii/core:latest
+    image: fireflyiii/core:{{ firefly_version }}
     container_name: firefly
     restart: unless-stopped
     environment:

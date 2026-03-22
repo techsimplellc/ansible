@@ -13,7 +13,7 @@
 
 services:
   anythingllm:
-    image: mintplexlabs/anythingllm:latest
+    image: mintplexlabs/anythingllm:{{ anythingllm_version }}
     container_name: anythingllm
     restart: unless-stopped
     environment:

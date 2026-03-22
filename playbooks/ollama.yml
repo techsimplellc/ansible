@@ -19,6 +19,9 @@
   become: true
   gather_facts: true
 
+  vars_files:
+    - vars/app_versions.yml
+
   vars:
     stacks_root: /opt/stacks
     docker_network: proxy

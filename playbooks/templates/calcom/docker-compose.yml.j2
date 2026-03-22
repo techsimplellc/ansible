@@ -12,7 +12,7 @@
 
 services:
   calcom:
-    image: calcom/cal.com:latest
+    image: calcom/cal.com:{{ calcom_version }}
     container_name: calcom
     restart: unless-stopped
     environment:

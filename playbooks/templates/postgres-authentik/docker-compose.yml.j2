@@ -10,7 +10,7 @@
 
 services:
   postgres-authentik:
-    image: postgres:16-alpine
+    image: postgres:{{ postgres_version }}
     container_name: postgres-authentik
     restart: unless-stopped
     environment:

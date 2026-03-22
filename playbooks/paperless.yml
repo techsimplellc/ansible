@@ -36,6 +36,7 @@
   gather_facts: true
 
   vars_files:
+    - vars/app_versions.yml
     - vars/paperless_vault.yml
 
   vars:

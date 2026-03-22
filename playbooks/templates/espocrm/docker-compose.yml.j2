@@ -13,7 +13,7 @@
 
 services:
   espocrm:
-    image: espocrm/espocrm:latest
+    image: espocrm/espocrm:{{ espocrm_version }}
     container_name: espocrm
     restart: unless-stopped
     entrypoint: >

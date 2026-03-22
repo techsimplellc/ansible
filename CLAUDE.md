@@ -12,6 +12,7 @@ This is the Ansible automation and homelab infrastructure repository for the PPF
 ~/git/ansible/
 ├── ansible.cfg
 ├── ansible.sh                          # Interactive playbook runner (macOS)
+├── migrate_vault.sh                    # One-time: split master vault into per-app vaults
 ├── inventory.yml                       # Hosts: farm (srv1,srv3-6), dev (dev1)
 ├── group_vars/
 │   └── all/
@@ -51,6 +52,7 @@ This is the Ansible automation and homelab infrastructure repository for the PPF
 │   ├── omnimail.yml                   # srv6 — OmniMail (build-from-source)
 │   │
 │   ├── vars/                          # Per-app vault files (encrypted with same password)
+│   │   ├── app_versions.yml           # Pinned image versions (plaintext, NOT encrypted)
 │   │   ├── cloudflared_vault.yml.example
 │   │   ├── firefly_vault.yml.example
 │   │   ├── n8n_vault.yml.example
@@ -150,6 +152,8 @@ This is the Ansible automation and homelab infrastructure repository for the PPF
 9. **`sed -i` on macOS** — always `sed -i ''` (BSD sed requires empty extension argument)
 10. **NFS server (srv6) must run before NFS client playbooks** — execution order is critical
 11. **Hardening playbook must run before stack playbooks** on any new server
+12. **No `:latest` image tags** — all images must be pinned to a specific version; versions live in `playbooks/vars/app_versions.yml`
+13. **No `depends_on` across separate compose projects** — `depends_on` only resolves within the same compose project; cross-stack startup ordering is handled by `wait_for` tasks in Ansible
 
 ---
 
@@ -202,10 +206,11 @@ CIS Ubuntu 24.04 L1 baseline. Key settings:
 
 Two vault layers, same password (`--ask-vault-pass` decrypts both):
 
-| File | Contents | Scope |
-|---|---|---|
-| `group_vars/all/vault.yml` | `bpainter_pubkey`, `docker_admin_pubkey` | Auto-loaded by hardening role |
-| `playbooks/vars/<app>_vault.yml` | App-specific secrets | Loaded via `vars_files:` in each playbook |
+| File | Type | Contents | Scope |
+| --- | --- | --- | --- |
+| `group_vars/all/vault.yml` | Encrypted | `bpainter_pubkey`, `docker_admin_pubkey` | Auto-loaded by hardening role |
+| `playbooks/vars/<app>_vault.yml` | Encrypted | App-specific secrets | Loaded via `vars_files:` in each playbook |
+| `playbooks/vars/app_versions.yml` | Plaintext | Pinned image versions for all stacks | Loaded via `vars_files:` in each playbook |
 
 ```bash
 # Create a new per-app vault from template
@@ -227,13 +232,13 @@ Per-app vault files and their key variables:
 | `cloudflared_vault.yml` | `cloudflared_tunnel_token` |
 | `firefly_vault.yml` | `firefly_db_password`, `firefly_app_key`, `firefly_importer_token` |
 | `n8n_vault.yml` | `n8n_db_password`, `n8n_encryption_key` |
-| `calcom_vault.yml` | `calcom_db_password`, `calcom_nextauth_secret`, `calendso_encryption_key` |
+| `calcom_vault.yml` | `calcom_db_password`, `calcom_nextauth_secret`, `calendso_encryption_key`, `calcom_google_client_id`, `calcom_google_client_secret` |
 | `espocrm_vault.yml` | `espocrm_db_password`, `espocrm_admin_password` |
 | `anythingllm_vault.yml` | `anythingllm_jwt_secret` |
 | `paperless_vault.yml` | `paperless_db_password`, `paperless_secret_key`, `paperless_admin_password`, `paperless_api_token` |
 | `authentik_vault.yml` | `authentik_db_password`, `authentik_secret_key` |
 | `simple_office_vault.yml` | `so_db_password`, `so_jwt_secret`, `so_onlyoffice_jwt_secret`, `so_session_secret`, `so_oidc_client_id`, `so_oidc_client_secret`, `onlyoffice_db_password`, `onlyoffice_jwt_secret` |
-| `omnimail_vault.yml` | `omnimail_db_password`, `omnimail_session_secret`, `omnimail_encryption_key`, OAuth client IDs/secrets |
+| `omnimail_vault.yml` | `omnimail_db_password`, `omnimail_session_secret`, `omnimail_encryption_key`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`, `MICROSOFT_REDIRECT_URI`, `YAHOO_CLIENT_ID`, `YAHOO_CLIENT_SECRET`, `YAHOO_REDIRECT_URI` |
 
 ---
 

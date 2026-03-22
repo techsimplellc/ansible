@@ -14,7 +14,7 @@
 
 services:
   paperless-gpt:
-    image: icereed/paperless-gpt:latest
+    image: icereed/paperless-gpt:{{ paperless_gpt_version }}
     container_name: paperless-gpt
     restart: unless-stopped
     environment:

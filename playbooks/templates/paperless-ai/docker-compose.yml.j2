@@ -13,7 +13,7 @@
 
 services:
   paperless-ai:
-    image: clusterzx/paperless-ai:latest
+    image: clusterzx/paperless-ai:{{ paperless_ai_version }}
     container_name: paperless-ai
     restart: unless-stopped
     environment:

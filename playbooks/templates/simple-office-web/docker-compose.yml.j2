@@ -17,7 +17,7 @@
 
 services:
   simple-office-web:
-    image: ghcr.io/techsimplellc/simple-office-web:latest
+    image: ghcr.io/techsimplellc/simple-office-web:{{ simple_office_web_version }}
     container_name: simple-office-web
     restart: unless-stopped
     environment:

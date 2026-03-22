@@ -11,7 +11,7 @@
 
 services:
   redis-simple-office:
-    image: redis:7-alpine
+    image: redis:{{ redis_version }}
     container_name: redis-simple-office
     restart: unless-stopped
     command: --save 60 1 --loglevel warning

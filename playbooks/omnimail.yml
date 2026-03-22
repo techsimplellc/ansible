@@ -46,6 +46,7 @@
   gather_facts: true
 
   vars_files:
+    - vars/app_versions.yml
     - vars/omnimail_vault.yml
 
   vars:

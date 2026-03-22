@@ -13,7 +13,7 @@
 
 services:
   adguardhome:
-    image: adguard/adguardhome:latest
+    image: adguard/adguardhome:{{ adguardhome_version }}
     container_name: adguardhome
     restart: unless-stopped
     ports:

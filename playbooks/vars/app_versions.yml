@@ -1,0 +1,60 @@
+---
+# =============================================================================
+# app_versions.yml — Pinned image versions for all stacks
+#
+# Update a version here, then re-run the relevant playbook to deploy.
+# This file is plaintext — NOT encrypted — so version history is visible
+# in git log.
+#
+# To find current stable releases:
+#   NPM         : https://github.com/NginxProxyManager/nginx-proxy-manager/releases
+#   Whoogle     : https://github.com/benbusby/whoogle-search/releases
+#   AdGuard     : https://github.com/AdguardTeam/AdGuardHome/releases
+#   MeTube      : https://github.com/alexta69/metube/releases
+#   Firefly III : https://github.com/firefly-iii/firefly-iii/releases
+#   Firefly Imp : https://github.com/firefly-iii/data-importer/releases
+#   n8n         : https://github.com/n8n-io/n8n/releases
+#   Cal.com     : https://github.com/calcom/cal.com/releases
+#   EspoCRM     : https://github.com/espocrm/espocrm/releases
+#   Ollama      : https://github.com/ollama/ollama/releases
+#   AnythingLLM : https://github.com/Mintplex-Labs/anything-llm/releases
+#   Paperless   : https://github.com/paperless-ngx/paperless-ngx/releases
+#   Paperless-AI: https://github.com/clusterzx/paperless-ai/releases
+#   Paperless-GPT: https://github.com/icereed/paperless-gpt/releases
+#   Authentik   : https://github.com/goauthentik/authentik/releases
+#   OnlyOffice  : https://github.com/ONLYOFFICE/DocumentServer/releases
+#   Cloudflared : https://github.com/cloudflare/cloudflared/releases
+# =============================================================================
+
+# ── Infrastructure ────────────────────────────────────────────────────────────
+postgres_version: "16-alpine"
+redis_version: "7-alpine"
+cloudflared_version: "2026.3.0"
+
+# ── srv1 ──────────────────────────────────────────────────────────────────────
+npm_version: "REPLACE_ME"
+whoogle_version: "REPLACE_ME"
+adguardhome_version: "REPLACE_ME"
+
+# ── srv3 ──────────────────────────────────────────────────────────────────────
+metube_version: "REPLACE_ME"
+firefly_version: "REPLACE_ME"
+firefly_importer_version: "REPLACE_ME"
+
+# ── srv4 ──────────────────────────────────────────────────────────────────────
+n8n_version: "REPLACE_ME"
+calcom_version: "REPLACE_ME"
+espocrm_version: "REPLACE_ME"
+
+# ── srv5 ──────────────────────────────────────────────────────────────────────
+ollama_version: "REPLACE_ME"
+anythingllm_version: "REPLACE_ME"
+
+# ── srv6 ──────────────────────────────────────────────────────────────────────
+paperless_version: "REPLACE_ME"
+paperless_ai_version: "REPLACE_ME"
+paperless_gpt_version: "REPLACE_ME"
+authentik_version: "2026.2.1"
+onlyoffice_version: "REPLACE_ME"
+simple_office_api_version: "REPLACE_ME"
+simple_office_web_version: "REPLACE_ME"

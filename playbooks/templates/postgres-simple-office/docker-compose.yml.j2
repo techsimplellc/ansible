@@ -14,7 +14,7 @@
 
 services:
   postgres-simple-office:
-    image: postgres:16-alpine
+    image: postgres:{{ postgres_version }}
     container_name: postgres-simple-office
     restart: unless-stopped
     environment:

@@ -5,7 +5,7 @@
 
 services:
   postgres-n8n:
-    image: postgres:16-alpine
+    image: postgres:{{ postgres_version }}
     container_name: postgres-n8n
     restart: unless-stopped
     environment:

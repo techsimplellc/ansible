@@ -23,7 +23,7 @@
 
 services:
   simple-office-api:
-    image: ghcr.io/techsimplellc/simple-office-api:latest
+    image: ghcr.io/techsimplellc/simple-office-api:{{ simple_office_api_version }}
     container_name: simple-office-api
     restart: unless-stopped
     environment:

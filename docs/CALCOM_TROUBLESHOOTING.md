@@ -94,8 +94,8 @@ openssl rand -base64 32
 
 ```bash
 # Add to vault
-ansible-vault edit group_vars/all/vault.yml
-# Add: calcom_encryption_key: "<output>"
+ansible-vault edit playbooks/vars/calcom_vault.yml
+# Add: calendso_encryption_key: "<output>"
 ```
 
 In `playbooks/templates/calcom/docker-compose.yml.j2`, ensure all required env vars are present:
@@ -114,7 +114,7 @@ In `playbooks/templates/calcom/docker-compose.yml.j2`, ensure all required env v
 Redeploy after fixing:
 
 ```bash
-ansible-playbook playbooks/srv4_stacks.yml -i inventory.yml --limit srv4 --ask-vault-pass --become
+ansible-playbook playbooks/calcom.yml -i inventory.yml --ask-vault-pass --become
 ```
 
 ---
@@ -384,7 +384,7 @@ If any of these are wrong, correct them in your `docker-compose.yml.j2` template
 
 ```bash
 # On Mac Mini
-ansible-playbook playbooks/srv4_stacks.yml -i inventory.yml --limit srv4 --ask-vault-pass --become
+ansible-playbook playbooks/calcom.yml -i inventory.yml --ask-vault-pass --become
 ```
 
 ---
@@ -440,7 +440,7 @@ docker compose down -v   # WARNING: -v removes volumes including DB data unless 
 docker compose up -d
 
 # Or via Ansible (preferred — preserves vault-injected config)
-ansible-playbook playbooks/srv4_stacks.yml -i inventory.yml --limit srv4 --ask-vault-pass --become
+ansible-playbook playbooks/calcom.yml -i inventory.yml --ask-vault-pass --become
 ```
 
 > ⚠️ Do **not** use `docker compose down -v` unless you intend to wipe the database. Omit `-v` for a soft restart.

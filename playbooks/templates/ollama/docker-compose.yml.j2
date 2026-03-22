@@ -16,7 +16,7 @@
 
 services:
   ollama:
-    image: ollama/ollama:latest
+    image: ollama/ollama:{{ ollama_version }}
     container_name: ollama
     restart: unless-stopped
     environment:

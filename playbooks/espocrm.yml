@@ -21,6 +21,7 @@
   gather_facts: true
 
   vars_files:
+    - vars/app_versions.yml
     - vars/espocrm_vault.yml
 
   vars:

@@ -16,6 +16,7 @@
   gather_facts: true
 
   vars_files:
+    - vars/app_versions.yml
     - vars/cloudflared_vault.yml
 
   vars:

@@ -22,7 +22,7 @@
 
 services:
   authentik-server:
-    image: ghcr.io/goauthentik/server:2024.10
+    image: ghcr.io/goauthentik/server:{{ authentik_version }}
     container_name: authentik-server
     restart: unless-stopped
     command: server
@@ -46,7 +46,7 @@ services:
       - redis-authentik
 
   authentik-worker:
-    image: ghcr.io/goauthentik/server:2024.10
+    image: ghcr.io/goauthentik/server:{{ authentik_version }}
     container_name: authentik-worker
     restart: unless-stopped
     command: worker
@@ -70,7 +70,7 @@ services:
       - redis-authentik
 
   redis-authentik:
-    image: redis:7-alpine
+    image: redis:{{ redis_version }}
     container_name: redis-authentik
     restart: unless-stopped
     command: --save 60 1 --loglevel warning
