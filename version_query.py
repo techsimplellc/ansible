@@ -53,8 +53,8 @@ APPS = [
     ("paperless_gpt_version",    "Paperless-GPT",      "icereed/paperless-gpt"),
     ("authentik_version",        "Authentik",          "goauthentik/authentik"),
     ("onlyoffice_version",       "OnlyOffice",         "ONLYOFFICE/DocumentServer"),
-    ("simple_office_api_version","Simple Office API",  "techsimplellc/simple-office-api"),
-    ("simple_office_web_version","Simple Office Web",  "techsimplellc/simple-office-web"),
+    # ("simple_office_api_version","Simple Office API",  "techsimplellc/simple-office-api"),
+    # ("simple_office_web_version","Simple Office Web",  "techsimplellc/simple-office-web"),
     # Docker Hub images — no GitHub release query
     ("postgres_version",         "PostgreSQL",         None),
     ("redis_version",            "Redis",              None),

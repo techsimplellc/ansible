@@ -32,29 +32,29 @@ redis_version: "7-alpine"
 cloudflared_version: "2026.3.0"
 
 # ── srv1 ──────────────────────────────────────────────────────────────────────
-npm_version: "REPLACE_ME"
-whoogle_version: "REPLACE_ME"
-adguardhome_version: "REPLACE_ME"
+npm_version: "2.14.0"
+whoogle_version: "1.2.2"
+adguardhome_version: "0.107.72"
 
 # ── srv3 ──────────────────────────────────────────────────────────────────────
-metube_version: "REPLACE_ME"
-firefly_version: "REPLACE_ME"
-firefly_importer_version: "REPLACE_ME"
+metube_version: "2026.03.20"
+firefly_version: "6.5.7"
+firefly_importer_version: "2.2.0"
 
 # ── srv4 ──────────────────────────────────────────────────────────────────────
-n8n_version: "REPLACE_ME"
-calcom_version: "REPLACE_ME"
-espocrm_version: "REPLACE_ME"
+n8n_version: "2.12"
+calcom_version: "6.1.16"
+espocrm_version: "9.3.2"
 
 # ── srv5 ──────────────────────────────────────────────────────────────────────
-ollama_version: "REPLACE_ME"
-anythingllm_version: "REPLACE_ME"
+ollama_version: "0.18.1"
+anythingllm_version: "1.11.1"
 
 # ── srv6 ──────────────────────────────────────────────────────────────────────
-paperless_version: "REPLACE_ME"
-paperless_ai_version: "REPLACE_ME"
-paperless_gpt_version: "REPLACE_ME"
-authentik_version: "2026.2.1"
-onlyoffice_version: "REPLACE_ME"
+paperless_version: "2.20.12"
+paperless_ai_version: "3.0.9"
+paperless_gpt_version: "0.25.0"
+authentik_version: "2026.2.0"
+onlyoffice_version: "9.3.0"
 simple_office_api_version: "REPLACE_ME"
 simple_office_web_version: "REPLACE_ME"
