@@ -245,6 +245,7 @@ Per-app vault files and their key variables:
 | `authentik_vault.yml` | `authentik_db_password`, `authentik_secret_key` |
 | `simple_office_vault.yml` | `so_db_password`, `so_jwt_secret`, `so_onlyoffice_jwt_secret`, `so_session_secret`, `so_oidc_client_id`, `so_oidc_client_secret`, `onlyoffice_db_password`, `onlyoffice_jwt_secret` |
 | `omnimail_vault.yml` | `omnimail_db_password`, `omnimail_session_secret`, `omnimail_encryption_key`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`, `MICROSOFT_REDIRECT_URI`, `YAHOO_CLIENT_ID`, `YAHOO_CLIENT_SECRET`, `YAHOO_REDIRECT_URI` |
+| `homarr_vault.yml` | `homarr_secret_key` |
 
 ---
 

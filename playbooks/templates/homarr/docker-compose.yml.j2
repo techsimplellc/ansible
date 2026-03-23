@@ -1,23 +1,23 @@
 # Repo path: ~/git/ansible/playbooks/templates/homarr/docker-compose.yml.j2
 ---
 # Homarr — Self-hosted application dashboard
-# Docs : https://homarr.dev/docs/getting-started/installation
-# Image: https://hub.docker.com/r/ajnart/homarr
+# Docs : https://homarr.dev/docs/getting-started/installation/docker/
+# Image: https://github.com/homarr-labs/homarr/pkgs/container/homarr
 #
 # Exposed on dev1 port 7575.
 # All configuration is done via the web UI — no YAML files required.
-# Config, icons, and data persist in bind-mounted directories under /opt/stacks/homarr.
+# SECRET_ENCRYPTION_KEY: generate with: openssl rand -hex 32
 
 services:
   homarr:
-    image: ajnart/homarr:{{ homarr_version }}
+    image: ghcr.io/homarr-labs/homarr:{{ homarr_version }}
     container_name: homarr
     restart: unless-stopped
+    environment:
+      SECRET_ENCRYPTION_KEY: "{{ homarr_secret_key }}"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro   # Docker integration
-      - "{{ stacks_root }}/homarr/configs:/app/data/configs"
-      - "{{ stacks_root }}/homarr/icons:/app/public/icons"
-      - "{{ stacks_root }}/homarr/data:/data"
+      - "{{ stacks_root }}/homarr/appdata:/appdata"
     ports:
       - "7575:7575"
     networks:

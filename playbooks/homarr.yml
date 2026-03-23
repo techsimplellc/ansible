@@ -1,10 +1,10 @@
 ---
 # =============================================================================
 # homarr.yml — Deploy Homarr dashboard to dev1
-# Docs: https://homarr.dev/docs/getting-started/installation
+# Docs: https://homarr.dev/docs/getting-started/installation/docker/
 #
-# No app-specific vault vars required.
-# All configuration is done via the Homarr web UI at http://192.168.68.21:7575
+# Vault: playbooks/vars/homarr_vault.yml
+#   homarr_secret_key: encryption key (openssl rand -hex 32)
 #
 # Run:
 #   ansible-playbook playbooks/homarr.yml -i inventory.yml --ask-vault-pass --become
@@ -17,12 +17,19 @@
 
   vars_files:
     - vars/app_versions.yml
+    - vars/homarr_vault.yml
 
   vars:
     stacks_root: /opt/stacks
     docker_network: proxy
 
   pre_tasks:
+    - name: Assert required vault variables are present
+      ansible.builtin.assert:
+        that:
+          - homarr_secret_key is defined and homarr_secret_key | length > 0
+        fail_msg: "Missing vault vars — populate and encrypt playbooks/vars/homarr_vault.yml"
+
     - name: Enforce /opt/stacks ownership
       ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/stacks_owner.yml"
 
@@ -31,17 +38,13 @@
         name: "{{ docker_network }}"
         state: present
 
-    - name: Ensure Homarr data directories exist
+    - name: Ensure Homarr appdata directory exists
       ansible.builtin.file:
-        path: "{{ stacks_root }}/homarr/{{ item }}"
+        path: "{{ stacks_root }}/homarr/appdata"
         state: directory
         owner: root
         group: docker-admin
         mode: "0775"
-      loop:
-        - configs
-        - icons
-        - data
 
   tasks:
     - name: Deploy homarr stack

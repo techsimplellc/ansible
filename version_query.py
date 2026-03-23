@@ -55,7 +55,7 @@ APPS = [
     ("onlyoffice_version",       "OnlyOffice",         "ONLYOFFICE/DocumentServer"),
     # ("simple_office_api_version","Simple Office API",  "techsimplellc/simple-office-api"),
     # ("simple_office_web_version","Simple Office Web",  "techsimplellc/simple-office-web"),
-    ("homarr_version",           "Homarr",             "ajnart/homarr"),
+    ("homarr_version",           "Homarr",             "homarr-labs/homarr"),
     # Docker Hub images — no GitHub release query
     ("postgres_version",         "PostgreSQL",         None),
     ("redis_version",            "Redis",              None),

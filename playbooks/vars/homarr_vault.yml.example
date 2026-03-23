@@ -1,0 +1,6 @@
+---
+# Homarr vault — encrypt with: ansible-vault encrypt playbooks/vars/homarr_vault.yml
+#
+# homarr_secret_key: generate with: openssl rand -hex 32
+
+homarr_secret_key: "REPLACE_ME"
