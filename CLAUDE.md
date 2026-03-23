@@ -169,7 +169,7 @@ This is the Ansible automation and homelab infrastructure repository for the `bp
 - Vault variables injected via Jinja2 `{{ var_name }}`
 - No `version:` key — Docker Compose V2 spec
 - Always hardcode `techsimple.dev` subdomains — never use `ansible_domain` (see Hard Rule #14)
-- Some images use `v`-prefixed Docker Hub tags (e.g. `icereed/paperless-gpt:v0.25.1`) — verify tag format on Docker Hub before pinning
+- Always verify the exact tag format on the registry before pinning — `v`-prefix and image registry (Docker Hub vs ghcr.io) vary per project and cause `manifest unknown` pull failures if wrong. Test with `docker pull` on the target host before committing.
 
 ### PostgreSQL Pattern
 - Separate container per app (consistent across srv3, srv4, srv6)
