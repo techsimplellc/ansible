@@ -23,9 +23,9 @@ services:
       DATABASE_DIRECT_URL: "postgresql://calcom:{{ calcom_db_password }}@postgres-calcom:5432/calcom"
       # Auth
       NEXTAUTH_SECRET: "{{ calcom_nextauth_secret }}"
-      NEXTAUTH_URL: "https://cal.{{ ansible_domain }}"
+      NEXTAUTH_URL: "https://cal.techsimple.dev"
       # App
-      NEXT_PUBLIC_WEBAPP_URL: "https://cal.{{ ansible_domain }}"
+      NEXT_PUBLIC_WEBAPP_URL: "https://cal.techsimple.dev"
       NEXT_PUBLIC_LICENSE_CONSENT: "agree"
       CALCOM_TELEMETRY_DISABLED: "1"
     volumes:

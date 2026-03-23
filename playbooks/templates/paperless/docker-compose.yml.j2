@@ -41,12 +41,12 @@ services:
       PAPERLESS_REDIS: redis://paperless-redis:6379
       # App
       PAPERLESS_SECRET_KEY: "{{ paperless_secret_key }}"
-      PAPERLESS_URL: "https://paperless.{{ ansible_domain | default('example.com') }}"
+      PAPERLESS_URL: "https://paperless.techsimple.dev"
       PAPERLESS_ALLOWED_HOSTS: "*"
-      PAPERLESS_CORS_ALLOWED_HOSTS: "https://paperless.{{ ansible_domain | default('example.com') }}"
+      PAPERLESS_CORS_ALLOWED_HOSTS: "https://paperless.techsimple.dev"
       PAPERLESS_ADMIN_USER: admin
       PAPERLESS_ADMIN_PASSWORD: "{{ paperless_admin_password }}"
-      PAPERLESS_ADMIN_MAIL: "admin@{{ ansible_domain | default('example.com') }}"
+      PAPERLESS_ADMIN_MAIL: "admin@techsimple.dev"
       # Storage
       PAPERLESS_CONSUMPTION_DIR: /usr/src/paperless/consume
       PAPERLESS_MEDIA_ROOT: /usr/src/paperless/media

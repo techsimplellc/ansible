@@ -25,7 +25,7 @@ services:
       DB_PASSWORD: "{{ firefly_db_password }}"
       # App
       APP_KEY: "{{ firefly_app_key }}"
-      APP_URL: "https://firefly.{{ ansible_domain | default('example.com') }}"
+      APP_URL: "https://firefly.techsimple.dev"
       APP_ENV: production
       TRUSTED_PROXIES: "**"
       # Mail (optional — disable by default)

@@ -33,7 +33,7 @@ services:
       ESPOCRM_ADMIN_USERNAME: admin
       ESPOCRM_ADMIN_PASSWORD: "{{ espocrm_admin_password }}"
       # App
-      ESPOCRM_SITE_URL: "https://crm.{{ ansible_domain | default('example.com') }}"
+      ESPOCRM_SITE_URL: "https://crm.techsimple.dev"
     volumes:
       - espocrm_data:/var/www/html
     ports:
