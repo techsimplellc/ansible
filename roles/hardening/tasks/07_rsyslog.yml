@@ -5,7 +5,7 @@
     name: rsyslog
     state: present
 
-- name: Deploy PPF rsyslog hardening config
+- name: Deploy homelab rsyslog hardening config
   ansible.builtin.copy:
     src: 99-ppf-hardening.conf
     dest: /etc/rsyslog.d/99-ppf-hardening.conf

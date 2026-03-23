@@ -1,6 +1,6 @@
-# PPF Homelab — Ansible Infrastructure
+# Homelab — Ansible Infrastructure
 
-Self-hosted homelab automation for Painter Precision Financial (PPF). This repository contains all Ansible playbooks, templates, and tooling needed to provision, configure, and maintain the full server fleet from a macOS control machine.
+Self-hosted homelab automation. This repository contains all Ansible playbooks, templates, and tooling needed to provision, configure, and maintain the full server fleet from a macOS control machine.
 
 > **Rebuild guarantee:** Following this document top to bottom will produce a fully functional environment from bare metal.
 

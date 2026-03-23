@@ -1,8 +1,8 @@
-# PPF Homelab — Claude Code Context
+# Homelab — Claude Code Context
 
 ## Identity & Role
 
-This is the Ansible automation and homelab infrastructure repository for the PPF (Painter Precision Financial) homelab. The operator is `bpainter`. Claude Code is used as a technical advisor and automation assistant across DevOps, infrastructure, and full-stack development tasks.
+This is the Ansible automation and homelab infrastructure repository for the `bpainter` homelab. Claude Code is used as a technical advisor and automation assistant across DevOps, infrastructure, and full-stack development tasks.
 
 ---
 

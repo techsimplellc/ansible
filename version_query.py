@@ -92,7 +92,7 @@ def github_request(path, token=None):
     req = urllib.request.Request(url)
     req.add_header("Accept", "application/vnd.github+json")
     req.add_header("X-GitHub-Api-Version", "2022-11-28")
-    req.add_header("User-Agent", "ppf-homelab-version-query")
+    req.add_header("User-Agent", "homelab-version-query")
     if token:
         req.add_header("Authorization", f"Bearer {token}")
     try:
@@ -167,7 +167,7 @@ COL_AGE     = 10
 def print_header():
     print()
     print(f"{CYAN}{BOLD}{'─' * 90}{RESET}")
-    print(f"{CYAN}{BOLD}  PPF Homelab — App Version Report{RESET}")
+    print(f"{CYAN}{BOLD}  Homelab — App Version Report{RESET}")
     print(f"{CYAN}{BOLD}  {datetime.now().strftime('%Y-%m-%d %H:%M')}  "
           f"(flags releases ≤ {NEW_RELEASE_DAYS} days old){RESET}")
     print(f"{CYAN}{BOLD}{'─' * 90}{RESET}")

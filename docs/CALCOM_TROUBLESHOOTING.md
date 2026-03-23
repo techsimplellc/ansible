@@ -335,7 +335,7 @@ docker logs cloudflared --tail 30 2>&1 | grep -iE "error|tunnel|connected|regist
 
 In the Cloudflare dashboard:
 1. Go to **Zero Trust → Networks → Tunnels**
-2. Find your PPF tunnel — status should be **Healthy** (green)
+2. Find your tunnel — status should be **Healthy** (green)
 3. Click the tunnel → **Public Hostname** tab
 4. Verify the `cal.techsimple.dev` entry:
 

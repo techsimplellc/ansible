@@ -30,7 +30,7 @@
 
 # Play 2: Apply hardening role.
 # gather_facts runs here (with the correct port set in Play 1).
-- name: PPF Homelab -- OS Hardening and System Security
+- name: Homelab -- OS Hardening and System Security
   hosts: "{{ target | default('all') }}"
   gather_facts: true
   roles:
