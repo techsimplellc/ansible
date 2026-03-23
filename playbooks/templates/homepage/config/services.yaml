@@ -1,0 +1,14 @@
+# Home page — navigation tiles linking to the other dashboard pages.
+# Use the tabs at the top to navigate, or click the tiles below.
+
+- By Server:
+    - name: Apps by Server
+      href: /?page=by-server
+      description: All apps organized by host machine
+      icon: mdi-server-network
+
+- By App:
+    - name: Apps by Category
+      href: /?page=by-app
+      description: All apps organized by function with descriptions
+      icon: mdi-application-brackets

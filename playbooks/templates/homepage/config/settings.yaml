@@ -1,0 +1,16 @@
+title: PPF Homelab
+favicon: https://cdn.jsdelivr.net/gh/selfhst/icons/svg/homepage.svg
+theme: dark
+color: slate
+headerStyle: clean
+target: _blank
+
+pages:
+  - name: Home
+    icon: mdi-home
+  - name: By Server
+    icon: mdi-server-network
+    filename: services-servers.yaml
+  - name: By App
+    icon: mdi-application-brackets
+    filename: services-apps.yaml

@@ -5,8 +5,13 @@
 #
 # No app-specific vault vars required.
 #
-# After deployment, configure services/bookmarks by editing YAML files at:
-#   /opt/stacks/homepage/config/
+# Config files deployed to /opt/stacks/homepage/config/:
+#   settings.yaml          — theme, title, page definitions
+#   services.yaml          — Home page (links to other pages)
+#   services-servers.yaml  — By Server page
+#   services-apps.yaml     — By App page (categories + descriptions)
+#   bookmarks.yaml         — (not deployed; create manually if needed)
+#   widgets.yaml           — (not deployed; create manually if needed)
 #
 # Run:
 #   ansible-playbook playbooks/homepage.yml -i inventory.yml --ask-vault-pass --become
@@ -40,6 +45,19 @@
         owner: "1000"
         group: "1000"
         mode: "0755"
+
+    - name: Deploy Homepage config files
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/templates/homepage/config/{{ item }}"
+        dest: "{{ stacks_root }}/homepage/config/{{ item }}"
+        owner: "1000"
+        group: "1000"
+        mode: "0644"
+      loop:
+        - settings.yaml
+        - services.yaml
+        - services-servers.yaml
+        - services-apps.yaml
 
   tasks:
     - name: Deploy homepage stack
