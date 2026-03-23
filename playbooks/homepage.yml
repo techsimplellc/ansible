@@ -6,12 +6,12 @@
 # No app-specific vault vars required.
 #
 # Config files deployed to /opt/stacks/homepage/config/:
-#   settings.yaml          — theme, title, page definitions
-#   services.yaml          — Home page (links to other pages)
-#   services-servers.yaml  — By Server page
-#   services-apps.yaml     — By App page (categories + descriptions)
-#   bookmarks.yaml         — (not deployed; create manually if needed)
-#   widgets.yaml           — (not deployed; create manually if needed)
+#   settings.yaml  — theme, title, tab layout definitions
+#   services.yaml  — all services across all three tabs (Home, By Server, By App)
+#                    Tab assignment is via layout.tab in settings.yaml — group
+#                    names in services.yaml must match layout keys exactly.
+#   bookmarks.yaml — (not deployed; create manually if needed)
+#   widgets.yaml   — (not deployed; create manually if needed)
 #
 # Run:
 #   ansible-playbook playbooks/homepage.yml -i inventory.yml --ask-vault-pass --become
@@ -56,8 +56,6 @@
       loop:
         - settings.yaml
         - services.yaml
-        - services-servers.yaml
-        - services-apps.yaml
 
   tasks:
     - name: Deploy homepage stack

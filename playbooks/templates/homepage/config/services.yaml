@@ -1,14 +1,210 @@
-# Home page — navigation tiles linking to the other dashboard pages.
-# Use the tabs at the top to navigate, or click the tiles below.
+# All services across all three tabs.
+# Tab assignment is controlled by the layout section in settings.yaml.
+# Group names here must match layout keys exactly.
 
-- By Server:
-    - name: Apps by Server
-      href: /?page=by-server
-      description: All apps organized by host machine
+# ── Home tab ──────────────────────────────────────────────────────────────────
+- Navigate:
+    - name: By Server
+      href: "#"
+      description: Use the "By Server" tab above to view all apps by host
       icon: mdi-server-network
-
-- By App:
-    - name: Apps by Category
-      href: /?page=by-app
-      description: All apps organized by function with descriptions
+    - name: By App
+      href: "#"
+      description: Use the "By App" tab above to view all apps by category
       icon: mdi-application-brackets
+
+# ── By Server tab ─────────────────────────────────────────────────────────────
+- srv1 — Gateway / Proxy:
+    - name: Nginx Proxy Manager
+      href: http://192.168.68.11:81
+      description: Reverse proxy admin UI
+      icon: nginx-proxy-manager
+    - name: AdGuard Home
+      href: http://192.168.68.11:3001
+      description: Network-wide DNS ad blocking
+      icon: adguard-home
+    - name: Whoogle
+      href: https://search.techsimple.dev
+      description: Privacy-respecting Google search proxy
+      icon: whoogle
+    - name: Cloudflared
+      href: https://one.dash.cloudflare.com
+      description: Cloudflare Zero Trust tunnel (dashboard)
+      icon: cloudflare
+
+- srv3 — Finance:
+    - name: Firefly III
+      href: http://192.168.68.13:8080
+      description: Personal finance manager
+      icon: firefly-iii
+    - name: Firefly Importer
+      href: http://192.168.68.13:8082
+      description: CSV/bank data importer for Firefly III
+      icon: firefly-iii
+    - name: MeTube
+      href: http://192.168.68.13:8081
+      description: YouTube / media downloader
+      icon: metube
+
+- srv4 — Productivity:
+    - name: n8n
+      href: http://192.168.68.14:5678
+      description: Workflow automation
+      icon: n8n
+    - name: Cal.com
+      href: http://192.168.68.14:3000
+      description: Open-source scheduling and calendar
+      icon: cal-com
+    - name: EspoCRM
+      href: http://192.168.68.14:8083
+      description: Customer relationship manager
+      icon: espocrm
+
+- srv5 — AI / GPU:
+    - name: AnythingLLM
+      href: http://192.168.68.15:3001
+      description: LLM chat interface with RAG support
+      icon: anythingllm
+    - name: Ollama
+      href: http://192.168.68.15:11434
+      description: Local LLM model server (API)
+      icon: ollama
+
+- srv6 — Storage / Services:
+    - name: Paperless-ngx
+      href: https://paperless.techsimple.dev
+      description: Document management and OCR
+      icon: paperless-ngx
+    - name: Paperless-AI
+      href: http://192.168.68.16:8087
+      description: AI-assisted document tagging
+      icon: mdi-robot
+    - name: Authentik
+      href: http://192.168.68.16:9000
+      description: Identity provider and SSO
+      icon: authentik
+    - name: OnlyOffice
+      href: https://office-dev.techsimple.dev
+      description: Online document editor suite
+      icon: onlyoffice
+    - name: FileBrowser
+      href: https://drive-dev.techsimple.dev
+      description: Web-based file manager
+      icon: filebrowser
+    - name: OmniMail
+      href: https://mail.techsimple.dev
+      description: Multi-account email client
+      icon: mdi-email
+    - name: Cockpit
+      href: https://192.168.68.16:9090
+      description: Server management UI
+      icon: cockpit
+
+- dev1 — Development:
+    - name: Homepage
+      href: http://192.168.68.21:3000
+      description: This dashboard
+      icon: homepage
+    - name: Cockpit
+      href: https://192.168.68.21:9090
+      description: Server management UI
+      icon: cockpit
+
+# ── By App tab ────────────────────────────────────────────────────────────────
+- Gateway & Networking:
+    - name: Nginx Proxy Manager
+      href: http://192.168.68.11:81
+      description: Manages reverse proxy hosts and SSL certificates for all internal services exposed through the Cloudflare tunnel
+      icon: nginx-proxy-manager
+    - name: AdGuard Home
+      href: http://192.168.68.11:3001
+      description: Network-wide DNS server with ad and tracker blocking. All LAN clients use this as their DNS resolver
+      icon: adguard-home
+    - name: Cloudflared
+      href: https://one.dash.cloudflare.com
+      description: Cloudflare Zero Trust tunnel connecting internal services to public subdomains on techsimple.dev without opening firewall ports
+      icon: cloudflare
+
+- Search & Utilities:
+    - name: Whoogle
+      href: https://search.techsimple.dev
+      description: Privacy-respecting Google search proxy — removes ads, tracking, and JavaScript while preserving search quality
+      icon: whoogle
+    - name: MeTube
+      href: http://192.168.68.13:8081
+      description: Web UI for yt-dlp. Download YouTube videos, playlists, and audio from 1000+ supported sites
+      icon: metube
+
+- Finance:
+    - name: Firefly III
+      href: http://192.168.68.13:8080
+      description: Self-hosted personal finance manager. Track income, expenses, budgets, and accounts with full transaction history
+      icon: firefly-iii
+    - name: Firefly Importer
+      href: http://192.168.68.13:8082
+      description: Import transactions from CSV files and bank exports into Firefly III. Run on-demand after generating an API token
+      icon: firefly-iii
+
+- Productivity & Scheduling:
+    - name: Cal.com
+      href: http://192.168.68.14:3000
+      description: Open-source scheduling platform. Manage availability, event types, and calendar integrations including Google Calendar
+      icon: cal-com
+    - name: n8n
+      href: http://192.168.68.14:5678
+      description: No-code / low-code workflow automation. Connect apps, APIs, and services with a visual node editor
+      icon: n8n
+    - name: EspoCRM
+      href: http://192.168.68.14:8083
+      description: Open-source CRM. Manage contacts, leads, opportunities, and activities for clients and prospects
+      icon: espocrm
+
+- AI & Machine Learning:
+    - name: AnythingLLM
+      href: http://192.168.68.15:3001
+      description: LLM chat interface with RAG (Retrieval-Augmented Generation) support. Uses Ollama as the local model backend on srv5
+      icon: anythingllm
+    - name: Ollama
+      href: http://192.168.68.15:11434
+      description: Local LLM model server running on srv5 (NVIDIA GPU). Hosts llama3.2 and nomic-embed-text. API at port 11434
+      icon: ollama
+
+- Document Management:
+    - name: Paperless-ngx
+      href: https://paperless.techsimple.dev
+      description: Scan, index, and archive physical documents. OCR-powered search, automatic tagging, and document lifecycle management
+      icon: paperless-ngx
+    - name: Paperless-AI
+      href: http://192.168.68.16:8087
+      description: AI-assisted automatic tagging and classification for documents ingested into Paperless-ngx using local Ollama models
+      icon: mdi-robot
+
+- Identity & Access:
+    - name: Authentik
+      href: http://192.168.68.16:9000
+      description: Self-hosted identity provider and SSO platform. Manages OIDC/OAuth2 authentication for integrated applications
+      icon: authentik
+
+- Office & Files:
+    - name: OnlyOffice
+      href: https://office-dev.techsimple.dev
+      description: Online document editor compatible with Word, Excel, and PowerPoint formats. Collaborative editing support
+      icon: onlyoffice
+    - name: FileBrowser
+      href: https://drive-dev.techsimple.dev
+      description: Web-based file manager for browsing and managing files stored on srv6. Supports upload, download, and sharing
+      icon: filebrowser
+    - name: OmniMail
+      href: https://mail.techsimple.dev
+      description: Self-hosted multi-account email client supporting Google, Microsoft, and Yahoo OAuth2 integrations
+      icon: mdi-email
+
+- Infrastructure:
+    - name: Cockpit (srv6)
+      href: https://192.168.68.16:9090
+      description: Web-based server management UI for srv6. Monitor CPU, memory, disk, containers, and services
+      icon: cockpit
+    - name: Cockpit (dev1)
+      href: https://192.168.68.21:9090
+      description: Web-based server management UI for dev1. Monitor resources and manage the development environment
+      icon: cockpit

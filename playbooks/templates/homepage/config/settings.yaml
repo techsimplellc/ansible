@@ -5,12 +5,88 @@ color: slate
 headerStyle: clean
 target: _blank
 
-pages:
-  - name: Home
-    icon: mdi-home
-  - name: By Server
-    icon: mdi-server-network
-    filename: services-servers.yaml
-  - name: By App
-    icon: mdi-application-brackets
-    filename: services-apps.yaml
+# Tabs are defined implicitly by the unique `tab:` values in layout below.
+# Tabs appear in the order their first group appears here.
+layout:
+  # ── Home tab ────────────────────────────────────────────────────────────────
+  Navigate:
+    tab: Home
+    style: row
+    columns: 2
+
+  # ── By Server tab ────────────────────────────────────────────────────────────
+  srv1 — Gateway / Proxy:
+    tab: By Server
+    style: row
+    columns: 4
+
+  srv3 — Finance:
+    tab: By Server
+    style: row
+    columns: 4
+
+  srv4 — Productivity:
+    tab: By Server
+    style: row
+    columns: 4
+
+  srv5 — AI / GPU:
+    tab: By Server
+    style: row
+    columns: 4
+
+  srv6 — Storage / Services:
+    tab: By Server
+    style: row
+    columns: 4
+
+  dev1 — Development:
+    tab: By Server
+    style: row
+    columns: 4
+
+  # ── By App tab ───────────────────────────────────────────────────────────────
+  Gateway & Networking:
+    tab: By App
+    style: row
+    columns: 4
+
+  Search & Utilities:
+    tab: By App
+    style: row
+    columns: 4
+
+  Finance:
+    tab: By App
+    style: row
+    columns: 4
+
+  Productivity & Scheduling:
+    tab: By App
+    style: row
+    columns: 4
+
+  AI & Machine Learning:
+    tab: By App
+    style: row
+    columns: 4
+
+  Document Management:
+    tab: By App
+    style: row
+    columns: 4
+
+  Identity & Access:
+    tab: By App
+    style: row
+    columns: 4
+
+  Office & Files:
+    tab: By App
+    style: row
+    columns: 4
+
+  Infrastructure:
+    tab: By App
+    style: row
+    columns: 4
