@@ -50,7 +50,7 @@ This is the Ansible automation and homelab infrastructure repository for the `bp
 │   ├── authentik.yml                  # srv6 — postgres-authentik + Authentik SSO
 │   ├── simple-office.yml              # srv6 — SO suite (two-pass)
 │   ├── omnimail.yml                   # srv6 — OmniMail (build-from-source)
-│   ├── homepage.yml                   # dev1 — Homepage dashboard
+│   ├── homarr.yml                     # dev1 — Homarr dashboard
 │   ├── cockpit-dev1.yml               # dev1 — Cockpit web console (systemd)
 │   │
 │   ├── vars/                          # Per-app vault files (encrypted with same password)
@@ -113,7 +113,7 @@ This is the Ansible automation and homelab infrastructure repository for the `bp
 | srv4 | 192.168.68.14 | Productivity | n8n, Cal.com, EspoCRM, PostgreSQL (x3) |
 | srv5 | 192.168.68.15 | AI / GPU | Ollama, AnythingLLM, NVIDIA GPU, NVMe at /mnt/nvme1 |
 | srv6 | 192.168.68.16 | Storage / Services | OnlyOffice, FileBrowser, Paperless-ngx, OmniMail, rsyslog, NFS server, Cockpit |
-| dev1 | 192.168.68.21 | Development | PPF Client Portal (Node/React/PostgreSQL), Homepage dashboard, Cockpit |
+| dev1 | 192.168.68.21 | Development | PPF Client Portal (Node/React/PostgreSQL), Homarr dashboard, Cockpit |
 
 ### Storage Architecture (srv6)
 - **OS disk:** Samsung SSD 850 (sda) — Ubuntu root
@@ -282,7 +282,7 @@ ansible-playbook playbooks/paperless.yml     -i inventory.yml --ask-vault-pass -
 ansible-playbook playbooks/authentik.yml     -i inventory.yml --ask-vault-pass --become
 ansible-playbook playbooks/simple-office.yml -i inventory.yml --ask-vault-pass --become
 ansible-playbook playbooks/omnimail.yml      -i inventory.yml --ask-vault-pass --become
-ansible-playbook playbooks/homepage.yml      -i inventory.yml --ask-vault-pass --become
+ansible-playbook playbooks/homarr.yml        -i inventory.yml --ask-vault-pass --become
 ansible-playbook playbooks/cockpit-dev1.yml  -i inventory.yml --ask-vault-pass --become
 
 # ── Tag-scoped runs ───────────────────────────────────────────────────────────
@@ -324,4 +324,4 @@ ansible all -i inventory.yml -m shell \
 - [ ] srv6 FileBrowser Quantum — admin password reset may be needed (env var ignored after DB init)
 - [ ] srv6 OnlyOffice + FileBrowser integration — config.yaml not yet configured
 - [ ] NFS client mounts on srv1, srv3, srv4, srv5 — verify all are active post-setup
-- [ ] homepage and cockpit-dev1 playbooks not yet run on dev1 — pending deployment
+- [ ] homarr and cockpit-dev1 playbooks not yet run on dev1 — pending deployment

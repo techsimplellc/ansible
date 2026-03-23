@@ -24,7 +24,7 @@
 #   Authentik   : https://github.com/goauthentik/authentik/releases
 #   OnlyOffice  : https://github.com/ONLYOFFICE/DocumentServer/releases
 #   Cloudflared : https://github.com/cloudflare/cloudflared/releases
-#   Homepage    : https://github.com/gethomepage/homepage/releases
+#   Homarr      : https://github.com/ajnart/homarr/releases
 # =============================================================================
 
 # ── Infrastructure ────────────────────────────────────────────────────────────
@@ -61,4 +61,4 @@ simple_office_api_version: "REPLACE_ME"
 simple_office_web_version: "REPLACE_ME"
 
 # ── dev1 ──────────────────────────────────────────────────────────────────────
-homepage_version: "v1.11.0"
+homarr_version: "0.16.0"

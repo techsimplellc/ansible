@@ -55,7 +55,7 @@ APPS = [
     ("onlyoffice_version",       "OnlyOffice",         "ONLYOFFICE/DocumentServer"),
     # ("simple_office_api_version","Simple Office API",  "techsimplellc/simple-office-api"),
     # ("simple_office_web_version","Simple Office Web",  "techsimplellc/simple-office-web"),
-    ("homepage_version",         "Homepage",           "gethomepage/homepage"),
+    ("homarr_version",           "Homarr",             "ajnart/homarr"),
     # Docker Hub images — no GitHub release query
     ("postgres_version",         "PostgreSQL",         None),
     ("redis_version",            "Redis",              None),
@@ -318,7 +318,7 @@ def main():
             "paperless_gpt_version": "srv6", "authentik_version": "srv6",
             "onlyoffice_version": "srv6", "simple_office_api_version": "srv6",
             "simple_office_web_version": "srv6",
-            "homepage_version": "dev1",
+            "homarr_version": "dev1",
             "postgres_version": None, "redis_version": None,
         }
         server = server_map.get(var_key)
