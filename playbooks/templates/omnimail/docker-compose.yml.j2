@@ -1,6 +1,6 @@
 # Repo path: ~/git/ansible/playbooks/templates/omnimail/docker-compose.yml.j2
 # Managed by Ansible — do not edit directly on the server. Re-render with:
-#   ansible-playbook playbooks/srv6_stacks.yml -i inventory.yml --limit srv6 --tags omnimail --ask-vault-pass --become
+#   ansible-playbook playbooks/omnimail.yml -i inventory.yml --limit srv6 --ask-vault-pass --become
 ---
 services:
   frontend:
@@ -28,6 +28,15 @@ services:
       SESSION_SECRET: "{{ omnimail_session_secret }}"
       ENCRYPTION_KEY: "{{ omnimail_encryption_key }}"
       PORT: 3001
+      GOOGLE_CLIENT_ID: "{{ GOOGLE_CLIENT_ID | default('') }}"
+      GOOGLE_CLIENT_SECRET: "{{ GOOGLE_CLIENT_SECRET | default('') }}"
+      GOOGLE_REDIRECT_URI: "{{ GOOGLE_REDIRECT_URI | default('https://mail.techsimple.dev/api/oauth/google/callback') }}"
+      MICROSOFT_CLIENT_ID: "{{ MICROSOFT_CLIENT_ID | default('') }}"
+      MICROSOFT_CLIENT_SECRET: "{{ MICROSOFT_CLIENT_SECRET | default('') }}"
+      MICROSOFT_REDIRECT_URI: "{{ MICROSOFT_REDIRECT_URI | default('https://mail.techsimple.dev/api/oauth/microsoft/callback') }}"
+      YAHOO_CLIENT_ID: "{{ YAHOO_CLIENT_ID | default('') }}"
+      YAHOO_CLIENT_SECRET: "{{ YAHOO_CLIENT_SECRET | default('') }}"
+      YAHOO_REDIRECT_URI: "{{ YAHOO_REDIRECT_URI | default('https://mail.techsimple.dev/api/oauth/yahoo/callback') }}"
     depends_on:
       db:
         condition: service_healthy

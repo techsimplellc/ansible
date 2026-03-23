@@ -22,15 +22,19 @@
 #              Service: http://192.168.68.16:8025
 #
 # Vault: playbooks/vars/omnimail_vault.yml
-#   omnimail_db_password        : database password (openssl rand -hex 24)
-#   omnimail_session_secret     : session secret (openssl rand -hex 32)
-#   omnimail_encryption_key     : AES-256-GCM key (openssl rand -hex 32)
-#   omnimail_google_client_id   : Google OAuth client ID (or blank to disable)
-#   omnimail_google_client_secret
-#   omnimail_microsoft_client_id: Microsoft OAuth client ID (or blank to disable)
-#   omnimail_microsoft_client_secret
-#   omnimail_yahoo_client_id    : Yahoo OAuth client ID (or blank to disable)
-#   omnimail_yahoo_client_secret
+#   omnimail_db_password             : database password (openssl rand -hex 24)
+#   omnimail_session_secret          : session secret (openssl rand -hex 32)
+#   omnimail_encryption_key          : AES-256-GCM key (openssl rand -hex 32)
+#   GOOGLE_CLIENT_ID        : Google OAuth client ID (leave unset to disable)
+#   GOOGLE_CLIENT_SECRET    : Google OAuth client secret
+#   MICROSOFT_CLIENT_ID     : Microsoft OAuth client ID (leave unset to disable)
+#   MICROSOFT_CLIENT_SECRET : Microsoft OAuth client secret
+#   YAHOO_CLIENT_ID         : Yahoo OAuth client ID (leave unset to disable)
+#   YAHOO_CLIENT_SECRET     : Yahoo OAuth client secret
+#
+# NOTE: Redirect URIs are NOT in the vault — they default to https://mail.techsimple.dev/api/oauth/<provider>/callback
+# NOTE: docker-compose.yml on srv6 is rendered from templates/omnimail/docker-compose.yml.j2
+#       Do NOT edit docker-compose.yml in the omnimail repo for production config changes.
 #
 # Run:
 #   ansible-playbook playbooks/omnimail.yml -i inventory.yml --ask-vault-pass --become
