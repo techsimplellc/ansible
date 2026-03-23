@@ -50,6 +50,8 @@ This is the Ansible automation and homelab infrastructure repository for the PPF
 │   ├── authentik.yml                  # srv6 — postgres-authentik + Authentik SSO
 │   ├── simple-office.yml              # srv6 — SO suite (two-pass)
 │   ├── omnimail.yml                   # srv6 — OmniMail (build-from-source)
+│   ├── homepage.yml                   # dev1 — Homepage dashboard
+│   ├── cockpit-dev1.yml               # dev1 — Cockpit web console (systemd)
 │   │
 │   ├── vars/                          # Per-app vault files (encrypted with same password)
 │   │   ├── app_versions.yml           # Pinned image versions (plaintext, NOT encrypted)
@@ -276,6 +278,8 @@ ansible-playbook playbooks/paperless.yml     -i inventory.yml --ask-vault-pass -
 ansible-playbook playbooks/authentik.yml     -i inventory.yml --ask-vault-pass --become
 ansible-playbook playbooks/simple-office.yml -i inventory.yml --ask-vault-pass --become
 ansible-playbook playbooks/omnimail.yml      -i inventory.yml --ask-vault-pass --become
+ansible-playbook playbooks/homepage.yml      -i inventory.yml --ask-vault-pass --become
+ansible-playbook playbooks/cockpit-dev1.yml  -i inventory.yml --ask-vault-pass --become
 
 # ── Tag-scoped runs ───────────────────────────────────────────────────────────
 # Harden only specific tasks

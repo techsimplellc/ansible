@@ -1,0 +1,48 @@
+---
+# =============================================================================
+# homepage.yml — Deploy Homepage dashboard to dev1
+# Docs: https://gethomepage.dev/installation/docker/
+#
+# No app-specific vault vars required.
+#
+# After deployment, configure services/bookmarks by editing YAML files at:
+#   /opt/stacks/homepage/config/
+#
+# Run:
+#   ansible-playbook playbooks/homepage.yml -i inventory.yml --ask-vault-pass --become
+# =============================================================================
+
+- name: Deploy Homepage dashboard to dev1
+  hosts: dev1
+  become: true
+  gather_facts: true
+
+  vars_files:
+    - vars/app_versions.yml
+
+  vars:
+    stacks_root: /opt/stacks
+    docker_network: proxy
+
+  pre_tasks:
+    - name: Enforce /opt/stacks ownership
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/stacks_owner.yml"
+
+    - name: Ensure shared Docker network exists
+      community.docker.docker_network:
+        name: "{{ docker_network }}"
+        state: present
+
+    - name: Ensure homepage config directory exists
+      ansible.builtin.file:
+        path: "{{ stacks_root }}/homepage/config"
+        state: directory
+        owner: "1000"
+        group: "1000"
+        mode: "0755"
+
+  tasks:
+    - name: Deploy homepage stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: homepage

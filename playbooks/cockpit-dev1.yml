@@ -1,0 +1,23 @@
+---
+# =============================================================================
+# cockpit-dev1.yml — Install and configure Cockpit web console on dev1
+# Docs: https://cockpit-project.org/running.html
+#
+# Cockpit runs as a native systemd service — not in Docker.
+# Access: https://192.168.68.21:9090
+#
+# Authentication uses PAM — log in with any system user that has sudo privileges.
+# Internal LAN only — not exposed via cloudflared tunnel.
+#
+# Run:
+#   ansible-playbook playbooks/cockpit-dev1.yml -i inventory.yml --ask-vault-pass --become
+# =============================================================================
+
+- name: Install Cockpit web console on dev1
+  hosts: dev1
+  become: true
+  gather_facts: true
+
+  tasks:
+    - name: Install and configure Cockpit
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/cockpit.yml"

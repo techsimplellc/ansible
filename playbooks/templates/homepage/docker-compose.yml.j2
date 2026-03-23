@@ -1,0 +1,29 @@
+# Repo path: ~/git/ansible/playbooks/templates/homepage/docker-compose.yml.j2
+---
+# Homepage — Self-hosted application dashboard
+# Docs : https://gethomepage.dev/installation/docker/
+# Image: https://github.com/gethomepage/homepage/pkgs/container/homepage
+#
+# Exposed on dev1 port 3000.
+# Config lives in /opt/stacks/homepage/config — edit YAML files there
+# to add services, bookmarks, and widgets.
+
+services:
+  homepage:
+    image: ghcr.io/gethomepage/homepage:{{ homepage_version }}
+    container_name: homepage
+    restart: unless-stopped
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+    volumes:
+      - "{{ stacks_root }}/homepage/config:/app/config"
+      - /var/run/docker.sock:/var/run/docker.sock:ro   # Docker widget integration
+    ports:
+      - "3000:3000"
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    external: true
