@@ -1,0 +1,72 @@
+---
+services:
+
+  searxng:
+    image: searxng/searxng:{{ icebreaker_searxng_version }}
+    container_name: icebreaker-searxng
+    restart: unless-stopped
+    environment:
+      SEARXNG_SECRET_KEY: "{{ searxng_secret_key }}"
+    volumes:
+      - "{{ stacks_root }}/icebreaker/searxng:/etc/searxng"
+    networks:
+      - proxy
+
+  crew1:
+    build: "{{ icebreaker_src }}/crew1"
+    container_name: icebreaker-crew1
+    restart: unless-stopped
+    environment:
+      OPENAI_API_KEY: "{{ openai_api_key }}"
+      SEARXNG_URL: "http://icebreaker-searxng:8080"
+    depends_on:
+      - searxng
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8001/inputs')\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    networks:
+      - proxy
+
+  crew2:
+    build: "{{ icebreaker_src }}/crew2"
+    container_name: icebreaker-crew2
+    restart: unless-stopped
+    environment:
+      OPENAI_API_KEY: "{{ openai_api_key }}"
+      SEARXNG_URL: "http://icebreaker-searxng:8080"
+    depends_on:
+      - searxng
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8002/inputs')\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    networks:
+      - proxy
+
+  app:
+    build: "{{ icebreaker_src }}"
+    container_name: icebreaker-app
+    restart: unless-stopped
+    ports:
+      - "8501:8501"
+    environment:
+      CREW1_URL: "http://icebreaker-crew1:8001"
+      CREW1_TOKEN: "local"
+      CREW2_URL: "http://icebreaker-crew2:8002"
+      CREW2_TOKEN: "local"
+    depends_on:
+      crew1:
+        condition: service_healthy
+      crew2:
+        condition: service_healthy
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    external: true

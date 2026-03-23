@@ -1,0 +1,94 @@
+---
+# =============================================================================
+# icebreaker.yml — Deploy Icebreaker prospecting assistant to srv5
+# Docs: https://github.com/benpaint/icebreaker
+#
+# Streamlit sales icebreaker app backed by two CrewAI crews and a local
+# SearXNG search instance. Crew images are built from source on the host.
+#
+# Vault requirements:
+#   icebreaker_vault.yml:
+#     openai_api_key:     OpenAI API key for agent LLMs
+#     searxng_secret_key: SearXNG internal secret (generate with openssl rand -hex 32)
+#
+# Run:
+#   ansible-playbook playbooks/icebreaker.yml -i inventory.yml --ask-vault-pass --become
+# =============================================================================
+
+- name: Deploy Icebreaker stack to srv5
+  hosts: srv5
+  become: true
+  gather_facts: true
+
+  vars_files:
+    - vars/app_versions.yml
+    - vars/icebreaker_vault.yml
+
+  vars:
+    stacks_root: /opt/stacks
+    docker_network: proxy
+    icebreaker_repo: https://github.com/benpaint/icebreaker.git
+    icebreaker_src: "{{ stacks_root }}/icebreaker/src"
+
+  pre_tasks:
+    - name: Assert required vault variables are present
+      ansible.builtin.assert:
+        that:
+          - openai_api_key is defined and openai_api_key | length > 0
+          - searxng_secret_key is defined and searxng_secret_key | length > 0
+        fail_msg: "Missing required vault vars. See playbooks/vars/icebreaker_vault.yml."
+
+    - name: Mount NFS storage from srv6
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/nfs_client.yml"
+
+    - name: Enforce /opt/stacks ownership
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/stacks_owner.yml"
+
+    - name: Ensure shared Docker network exists
+      community.docker.docker_network:
+        name: "{{ docker_network }}"
+        state: present
+
+    - name: Ensure icebreaker stack directories exist
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+      loop:
+        - "{{ stacks_root }}/icebreaker"
+        - "{{ stacks_root }}/icebreaker/searxng"
+
+    - name: Clone or update icebreaker source
+      ansible.builtin.git:
+        repo: "{{ icebreaker_repo }}"
+        dest: "{{ icebreaker_src }}"
+        version: main
+        force: true
+
+  tasks:
+    - name: Render Docker Compose template
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/templates/icebreaker/docker-compose.yml.j2"
+        dest: "{{ stacks_root }}/icebreaker/docker-compose.yml"
+        owner: root
+        group: root
+        mode: "0640"
+      register: compose_template
+
+    - name: Copy SearXNG settings
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/templates/icebreaker/searxng/settings.yml"
+        dest: "{{ stacks_root }}/icebreaker/searxng/settings.yml"
+        owner: root
+        group: root
+        mode: "0644"
+      register: searxng_settings
+
+    - name: Build and start icebreaker stack
+      ansible.builtin.command:
+        cmd: docker compose up --build --detach --remove-orphans
+        chdir: "{{ stacks_root }}/icebreaker"
+      when: compose_template.changed or searxng_settings.changed
+      changed_when: true

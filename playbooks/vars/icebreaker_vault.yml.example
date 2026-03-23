@@ -1,0 +1,10 @@
+# icebreaker_vault.yml — secrets for the Icebreaker stack
+#
+# Copy this file to icebreaker_vault.yml, fill in values, then encrypt:
+#   ansible-vault encrypt playbooks/vars/icebreaker_vault.yml
+#
+# Generate searxng_secret_key:
+#   openssl rand -hex 32
+
+openai_api_key: "sk-..."
+searxng_secret_key: "replace-with-openssl-rand-hex-32-output"

@@ -1,0 +1,27 @@
+use_default_settings: true
+
+server:
+  secret_key: "icebreaker-local-secret"  # overridden at runtime by SEARXNG_SECRET_KEY env var
+  limiter: false        # disables Redis-dependent rate limiter for local use
+  image_proxy: false
+
+search:
+  safe_search: 0
+  default_lang: "en"
+  formats:
+    - html
+    - json              # REQUIRED — enables ?format=json API responses
+
+engines:
+  - name: google
+    engine: google
+    shortcut: g
+    disabled: false
+  - name: bing
+    engine: bing
+    shortcut: b
+    disabled: false
+  - name: duckduckgo
+    engine: duckduckgo
+    shortcut: d
+    disabled: false
