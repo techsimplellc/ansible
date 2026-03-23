@@ -41,7 +41,7 @@ Self-hosted homelab automation. This repository contains all Ansible playbooks, 
 | srv4 | 192.168.68.14 | Productivity | n8n, Cal.com, EspoCRM |
 | srv5 | 192.168.68.15 | AI / GPU | Ollama, AnythingLLM, NVIDIA GPU |
 | srv6 | 192.168.68.16 | Storage / Services | Paperless-ngx, Authentik, Simple Office, OmniMail, NFS server, rsyslog, Cockpit |
-| dev1 | 192.168.68.21 | Development | PPF Client Portal |
+| dev1 | 192.168.68.21 | Development | Homarr dashboard, Cockpit |
 
 ### Storage Architecture (srv6)
 
@@ -170,6 +170,7 @@ Required secrets per vault:
 | `authentik_vault.yml` | `authentik_db_password`, `authentik_secret_key` |
 | `simple_office_vault.yml` | `so_db_password`, `so_jwt_secret`, `so_onlyoffice_jwt_secret`, `so_session_secret`, `onlyoffice_db_password`, `onlyoffice_jwt_secret`, `so_oidc_client_id` (pass 2), `so_oidc_client_secret` (pass 2) |
 | `omnimail_vault.yml` | `omnimail_db_password`, `omnimail_session_secret`, `omnimail_encryption_key`, OAuth client IDs and secrets for Google/Microsoft/Yahoo |
+| `homarr_vault.yml` | `homarr_secret_key` — generate with `openssl rand -hex 32` |
 
 Generate secrets where needed:
 
@@ -248,6 +249,10 @@ ansible-playbook playbooks/srv4_stacks.yml -i inventory.yml --ask-vault-pass --b
 
 # 5. srv5 — AI / GPU (ollama must deploy before anythingllm)
 ansible-playbook playbooks/srv5_stacks.yml -i inventory.yml --ask-vault-pass --become
+
+# 6. dev1 — Dashboard and web console
+ansible-playbook playbooks/homarr.yml      -i inventory.yml --ask-vault-pass --become
+ansible-playbook playbooks/cockpit-dev1.yml -i inventory.yml --ask-vault-pass --become
 ```
 
 ### Pass 2 — Token-dependent deployments
@@ -454,7 +459,7 @@ The tunnel connects the homelab to the internet. All external traffic flows thro
 **Create the tunnel:**
 1. Log in to [Cloudflare Zero Trust dashboard](https://one.dash.cloudflare.com)
 2. **Networks → Tunnels → Create a tunnel**
-3. Name: `ppf-homelab`
+3. Name: `homelab` (or any name you prefer)
 4. Copy the tunnel token — add it to vault:
    ```bash
    ansible-vault edit playbooks/vars/cloudflared_vault.yml
@@ -464,7 +469,7 @@ The tunnel connects the homelab to the internet. All external traffic flows thro
 
 **Configure public hostnames** (after NPM is running):
 
-Navigate to **Networks → Tunnels → ppf-homelab → Public Hostnames** and add one entry per exposed service. All entries use the same service target: `http://npm:80` — NPM routes internally by hostname.
+Navigate to **Networks → Tunnels → your tunnel → Public Hostnames** and add one entry per exposed service. All entries use the same service target: `http://npm:80` — NPM routes internally by hostname.
 
 | Subdomain | Domain | Service |
 |---|---|---|
@@ -754,6 +759,50 @@ Access: `https://mail.techsimple.dev`
 
 ---
 
+### Homarr
+
+Self-hosted application dashboard on dev1. Image: `ghcr.io/homarr-labs/homarr`.
+
+**Vault setup (required before first deploy):**
+
+```bash
+cp playbooks/vars/homarr_vault.yml.example playbooks/vars/homarr_vault.yml
+# Edit and set homarr_secret_key to the output of: openssl rand -hex 32
+ansible-vault encrypt playbooks/vars/homarr_vault.yml
+```
+
+**Deploy:**
+
+```bash
+ansible-playbook playbooks/homarr.yml -i inventory.yml --ask-vault-pass --become
+```
+
+**First login:**
+
+1. Navigate to `http://192.168.68.21:7575`
+2. Create an admin account on the initial setup screen
+3. All configuration is done via the web UI — no YAML files required
+4. Add apps, links, and widgets through the dashboard editor
+
+**Docker integration:** The container mounts `/var/run/docker.sock` read-only, allowing Homarr to display running container status automatically.
+
+---
+
+### Cockpit
+
+Web-based server management console. Deployed to dev1 via `cockpit-dev1.yml`.
+
+**Access:**
+
+- dev1: `http://192.168.68.21:9090`
+- srv6: `http://192.168.68.16:9090`
+
+**Login:** Use the server's OS credentials (`bpainter` or `docker-admin`).
+
+No post-deploy configuration required — Cockpit is functional immediately after the playbook runs.
+
+---
+
 ## Exposed Services
 
 | Service | Internal URL | External URL |
@@ -775,7 +824,9 @@ Access: `https://mail.techsimple.dev`
 | OmniMail | `http://192.168.68.16:8025` | `https://mail.techsimple.dev` |
 | OnlyOffice CE | `http://192.168.68.16:8084` | `https://office-dev.techsimple.dev` |
 | FileBrowser Quantum | `http://192.168.68.16:8085` | `https://drive-dev.techsimple.dev` |
-| Cockpit | `http://192.168.68.16:9090` | LAN only |
+| Cockpit (srv6) | `http://192.168.68.16:9090` | LAN only |
+| Homarr | `http://192.168.68.21:7575` | LAN only |
+| Cockpit (dev1) | `http://192.168.68.21:9090` | LAN only |
 
 ---
 
