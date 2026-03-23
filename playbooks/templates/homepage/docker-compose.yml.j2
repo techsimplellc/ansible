@@ -16,7 +16,7 @@ services:
     environment:
       PUID: "1000"
       PGID: "1000"
-      HOMEPAGE_ALLOWED_HOSTS: "192.168.68.21:3000"
+      HOMEPAGE_ALLOWED_HOSTS: "*"
     volumes:
       - "{{ stacks_root }}/homepage/config:/app/config"
       - /var/run/docker.sock:/var/run/docker.sock:ro   # Docker widget integration
