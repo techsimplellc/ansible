@@ -53,7 +53,7 @@ anythingllm_version: "1.11.1"
 # ── srv6 ──────────────────────────────────────────────────────────────────────
 paperless_version: "2.20.12"
 paperless_ai_version: "3.0.9"
-paperless_gpt_version: "0.25.0"
+paperless_gpt_version: "v0.25.1"
 authentik_version: "2026.2.0"
 onlyoffice_version: "9.3.0"
 simple_office_api_version: "REPLACE_ME"
