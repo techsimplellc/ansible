@@ -113,7 +113,7 @@ This is the Ansible automation and homelab infrastructure repository for the `bp
 | srv4 | 192.168.68.14 | Productivity | n8n, Cal.com, EspoCRM, PostgreSQL (x3) |
 | srv5 | 192.168.68.15 | AI / GPU | Ollama, AnythingLLM, NVIDIA GPU, NVMe at /mnt/nvme1 |
 | srv6 | 192.168.68.16 | Storage / Services | OnlyOffice, FileBrowser, Paperless-ngx, OmniMail, rsyslog, NFS server, Cockpit |
-| dev1 | 192.168.68.21 | Development | PPF Client Portal (Node/React/PostgreSQL), Homarr dashboard, Cockpit |
+| dev1 | 192.168.68.21 | Development | Homarr dashboard, Cockpit |
 
 ### Storage Architecture (srv6)
 - **OS disk:** Samsung SSD 850 (sda) — Ubuntu root
@@ -157,7 +157,7 @@ This is the Ansible automation and homelab infrastructure repository for the `bp
 12. **No `:latest` image tags** — all images must be pinned to a specific version; versions live in `playbooks/vars/app_versions.yml`
 13. **No `depends_on` across separate compose projects** — `depends_on` only resolves within the same compose project; cross-stack startup ordering is handled by `wait_for` tasks in Ansible
 14. **Never use `ansible_domain` in templates** — it is not defined in inventory and falls back to `example.com`, breaking CSRF, auth redirects, and URL validation. Always hardcode `techsimple.dev` subdomains directly in `.j2` templates.
-15. **Keep all `.md` files current** — whenever a playbook, template, vault variable, convention, or known issue changes, update `CLAUDE.md`, `README.md`, and any relevant `docs/` files in the same commit.
+15. **Documentation is code** — `.md` files must be updated in the **same commit** as the change that affects them. Before staging any commit, determine independently which docs are impacted and include them. Never open a follow-up commit for docs, and never ask the operator what was affected.
 
 ---
 
