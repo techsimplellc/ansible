@@ -113,7 +113,7 @@ This is the Ansible automation and homelab infrastructure repository for the PPF
 | srv4 | 192.168.68.14 | Productivity | n8n, Cal.com, EspoCRM, PostgreSQL (x3) |
 | srv5 | 192.168.68.15 | AI / GPU | Ollama, AnythingLLM, NVIDIA GPU, NVMe at /mnt/nvme1 |
 | srv6 | 192.168.68.16 | Storage / Services | OnlyOffice, FileBrowser, Paperless-ngx, OmniMail, rsyslog, NFS server, Cockpit |
-| dev1 | 192.168.68.21 | Development | PPF Client Portal (Node/React/PostgreSQL) |
+| dev1 | 192.168.68.21 | Development | PPF Client Portal (Node/React/PostgreSQL), Homepage dashboard, Cockpit |
 
 ### Storage Architecture (srv6)
 - **OS disk:** Samsung SSD 850 (sda) — Ubuntu root
@@ -156,6 +156,8 @@ This is the Ansible automation and homelab infrastructure repository for the PPF
 11. **Hardening playbook must run before stack playbooks** on any new server
 12. **No `:latest` image tags** — all images must be pinned to a specific version; versions live in `playbooks/vars/app_versions.yml`
 13. **No `depends_on` across separate compose projects** — `depends_on` only resolves within the same compose project; cross-stack startup ordering is handled by `wait_for` tasks in Ansible
+14. **Never use `ansible_domain` in templates** — it is not defined in inventory and falls back to `example.com`, breaking CSRF, auth redirects, and URL validation. Always hardcode `techsimple.dev` subdomains directly in `.j2` templates.
+15. **Keep all `.md` files current** — whenever a playbook, template, vault variable, convention, or known issue changes, update `CLAUDE.md`, `README.md`, and any relevant `docs/` files in the same commit.
 
 ---
 
@@ -166,6 +168,8 @@ This is the Ansible automation and homelab infrastructure repository for the PPF
 - All use the `proxy` Docker network (external, bridge)
 - Vault variables injected via Jinja2 `{{ var_name }}`
 - No `version:` key — Docker Compose V2 spec
+- Always hardcode `techsimple.dev` subdomains — never use `ansible_domain` (see Hard Rule #14)
+- Some images use `v`-prefixed Docker Hub tags (e.g. `icereed/paperless-gpt:v0.25.1`) — verify tag format on Docker Hub before pinning
 
 ### PostgreSQL Pattern
 - Separate container per app (consistent across srv3, srv4, srv6)
@@ -320,3 +324,4 @@ ansible all -i inventory.yml -m shell \
 - [ ] srv6 FileBrowser Quantum — admin password reset may be needed (env var ignored after DB init)
 - [ ] srv6 OnlyOffice + FileBrowser integration — config.yaml not yet configured
 - [ ] NFS client mounts on srv1, srv3, srv4, srv5 — verify all are active post-setup
+- [ ] homepage and cockpit-dev1 playbooks not yet run on dev1 — pending deployment
