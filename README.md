@@ -37,7 +37,7 @@ Self-hosted homelab automation. This repository contains all Ansible playbooks, 
 | Host | IP | Role | Key Services |
 |---|---|---|---|
 | srv1 | 192.168.68.11 | Gateway / Proxy | Cloudflared tunnel, Nginx Proxy Manager, Whoogle, AdGuard Home |
-| srv3 | 192.168.68.13 | Finance | Firefly III, Firefly Importer, yt-dlp-gui |
+| srv3 | 192.168.68.13 | Finance / Media | Firefly III, Firefly Importer, Jellyfin, yt-dlp-gui |
 | srv4 | 192.168.68.14 | Productivity | n8n, Cal.com, EspoCRM |
 | srv5 | 192.168.68.15 | AI / GPU | Ollama, AnythingLLM, NVIDIA GPU |
 | srv6 | 192.168.68.16 | Storage / Services | Paperless-ngx, Authentik, Simple Office, OmniMail, NFS server, rsyslog, Cockpit |

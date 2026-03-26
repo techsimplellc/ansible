@@ -1,0 +1,54 @@
+---
+# =============================================================================
+# jellyfin.yml — Deploy Jellyfin media server to srv3
+# Docs: https://jellyfin.org/docs/general/installation/container/
+#
+# No vault required — Jellyfin admin credentials are configured through
+# the first-run setup wizard at http://192.168.68.13:8096.
+#
+# Media library path on srv3 NFS storage: /mnt/storage/media
+# Create that directory and place your media there before first run.
+# Subdirectories are scanned per-library in the Jellyfin UI.
+#
+# Run:
+#   ansible-playbook playbooks/jellyfin.yml -i inventory.yml --ask-vault-pass --become
+# =============================================================================
+
+- name: Deploy Jellyfin stack to srv3
+  hosts: srv3
+  become: true
+  gather_facts: true
+
+  vars_files:
+    - vars/app_versions.yml
+
+  vars:
+    stacks_root: /opt/stacks
+    docker_network: proxy
+    stack_name: jellyfin
+
+  pre_tasks:
+    - name: Mount NFS storage from srv6
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/nfs_client.yml"
+
+    - name: Enforce /opt/stacks ownership
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/stacks_owner.yml"
+
+    - name: Ensure shared Docker network exists
+      community.docker.docker_network:
+        name: "{{ docker_network }}"
+        state: present
+
+    - name: Ensure media directory exists on NFS storage
+      ansible.builtin.file:
+        path: /mnt/storage/media
+        state: directory
+        owner: root
+        group: docker-admin
+        mode: "2775"
+
+  tasks:
+    - name: Deploy jellyfin stack
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/deploy_stack.yml"
+      vars:
+        stack_name: jellyfin

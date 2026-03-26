@@ -28,7 +28,7 @@ This is the Ansible automation and homelab infrastructure repository for the `bp
 │   │
 │   ├── # ── Orchestrators (import_playbook thin wrappers) ──────────────────
 │   ├── srv1_stacks.yml                # → cloudflared, npm, whoogle, adguardhome
-│   ├── srv3_stacks.yml                # → yt-dlp-gui, firefly, firefly-importer
+│   ├── srv3_stacks.yml                # → yt-dlp-gui, jellyfin, firefly, firefly-importer
 │   ├── srv4_stacks.yml                # → n8n, calcom, espocrm
 │   ├── srv5_stacks.yml                # → ollama, anythingllm
 │   ├── srv6_stacks.yml                # infra play + → paperless, authentik, simple-office, omnimail
@@ -39,6 +39,7 @@ This is the Ansible automation and homelab infrastructure repository for the `bp
 │   ├── whoogle.yml                    # srv1 — Whoogle search
 │   ├── adguardhome.yml                # srv1 — AdGuard Home DNS
 │   ├── yt-dlp-gui.yml                 # srv3 — yt-dlp-gui (source pushed from controller, LAN-only :6080)
+│   ├── jellyfin.yml                   # srv3 — Jellyfin media server (:8096)
 │   ├── firefly.yml                    # srv3 — PostgreSQL + Firefly III
 │   ├── firefly-importer.yml           # srv3 — Firefly Importer (two-pass)
 │   ├── n8n.yml                        # srv4 — postgres-n8n + n8n
@@ -109,7 +110,7 @@ This is the Ansible automation and homelab infrastructure repository for the `bp
 | Host | IP | Role | Key Services |
 |---|---|---|---|
 | srv1 | 192.168.68.11 | Gateway / Proxy | cloudflared, NPM, Whoogle, AdGuard Home |
-| srv3 | 192.168.68.13 | Finance | Firefly III, Firefly Importer, yt-dlp-gui, PostgreSQL |
+| srv3 | 192.168.68.13 | Finance / Media | Firefly III, Firefly Importer, Jellyfin, yt-dlp-gui, PostgreSQL |
 | srv4 | 192.168.68.14 | Productivity | n8n, Cal.com, EspoCRM, PostgreSQL (x3) |
 | srv5 | 192.168.68.15 | AI / GPU | Ollama, AnythingLLM, NVIDIA GPU, NVMe at /mnt/nvme1 |
 | srv6 | 192.168.68.16 | Storage / Services | OnlyOffice, FileBrowser, Paperless-ngx, OmniMail, rsyslog, NFS server, Cockpit |
@@ -273,6 +274,7 @@ ansible-playbook playbooks/npm.yml           -i inventory.yml --ask-vault-pass -
 ansible-playbook playbooks/whoogle.yml       -i inventory.yml --ask-vault-pass --become
 ansible-playbook playbooks/adguardhome.yml   -i inventory.yml --ask-vault-pass --become
 ansible-playbook playbooks/yt-dlp-gui.yml    -i inventory.yml --ask-vault-pass --become
+ansible-playbook playbooks/jellyfin.yml      -i inventory.yml --ask-vault-pass --become
 ansible-playbook playbooks/firefly.yml       -i inventory.yml --ask-vault-pass --become
 ansible-playbook playbooks/firefly-importer.yml -i inventory.yml --ask-vault-pass --become
 ansible-playbook playbooks/n8n.yml           -i inventory.yml --ask-vault-pass --become

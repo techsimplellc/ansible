@@ -1,0 +1,17 @@
+services:
+  jellyfin:
+    image: jellyfin/jellyfin:{{ jellyfin_version }}
+    container_name: jellyfin
+    networks:
+      - proxy
+    ports:
+      - "8096:8096"
+    volumes:
+      - ./config:/config
+      - ./cache:/cache
+      - /mnt/storage/media:/data/media:ro
+    restart: unless-stopped
+
+networks:
+  proxy:
+    external: true

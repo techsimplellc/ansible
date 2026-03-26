@@ -24,6 +24,7 @@
 #   OnlyOffice  : https://github.com/ONLYOFFICE/DocumentServer/releases
 #   Cloudflared : https://github.com/cloudflare/cloudflared/releases
 #   Homarr      : https://github.com/homarr-labs/homarr/releases
+#   Jellyfin    : https://github.com/jellyfin/jellyfin/releases
 # =============================================================================
 
 # ── Infrastructure ────────────────────────────────────────────────────────────
@@ -39,6 +40,7 @@ adguardhome_version: "0.107.72"
 # ── srv3 ──────────────────────────────────────────────────────────────────────
 # yt-dlp-gui: no version entry — source is pushed from ~/git/yt-dlp-gui on the
 # Ansible controller; there is no registry image or git ref to pin here.
+jellyfin_version: "10.11.6"
 firefly_version: "6.5.7"
 firefly_importer_version: "2.2.0"
 
