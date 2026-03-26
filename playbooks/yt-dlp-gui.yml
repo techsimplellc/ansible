@@ -99,6 +99,11 @@
       ansible.builtin.command:
         cmd: docker compose build
         chdir: "{{ stacks_root }}/{{ stack_name }}"
+      environment:
+        # BuildKit bake pipes the compose config via stdin, losing the working
+        # directory anchor — Dockerfile resolution fails. Disable BuildKit so
+        # the classic builder resolves the build context from chdir directly.
+        DOCKER_BUILDKIT: "0"
       when: git_clone.changed or compose_file.changed
       register: build_result
       changed_when: build_result.rc == 0
