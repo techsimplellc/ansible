@@ -4,8 +4,12 @@
 # Docs: https://github.com/dsymbol/yt-dlp-gui
 #
 # No published Docker image — source is cloned and built on-host.
-# Source clone: /opt/ytdlpgui-src (pinned to ytdlpgui_git_ref)
-# Stack dir:    /opt/stacks/ytdlpgui  (downloads, config, compose file)
+# Stack dir: /opt/stacks/ytdlpgui  (source, downloads, config, compose file)
+#
+# The git repo is cloned directly into the stack directory so that
+# `build: .` in docker-compose.yml resolves the Dockerfile correctly.
+# git reset --hard only affects tracked files; config/ and downloads/
+# (untracked) are preserved across updates.
 #
 # Subnet restriction: port 6080 is bound to 192.168.68.13 only.
 # Not exposed externally — do NOT add to Cloudflare tunnel or NPM.
@@ -28,7 +32,6 @@
 
   vars:
     stacks_root: /opt/stacks
-    src_dir: /opt/ytdlpgui-src
     stack_name: ytdlpgui
 
   pre_tasks:
@@ -45,15 +48,15 @@
         state: present
         update_cache: false
 
-    - name: Clone yt-dlp-gui source at pinned ref
+    - name: Clone yt-dlp-gui source into stack directory
       ansible.builtin.git:
         repo: https://github.com/dsymbol/yt-dlp-gui.git
-        dest: "{{ src_dir }}"
+        dest: "{{ stacks_root }}/{{ stack_name }}"
         version: "{{ ytdlpgui_git_ref }}"
         force: true
       register: git_clone
 
-    - name: Create stack runtime directories
+    - name: Create persistent subdirectories
       ansible.builtin.file:
         path: "{{ item }}"
         state: directory
@@ -61,7 +64,6 @@
         group: docker-admin
         mode: "2775"
       loop:
-        - "{{ stacks_root }}/{{ stack_name }}"
         - "{{ stacks_root }}/{{ stack_name }}/downloads"
         - "{{ stacks_root }}/{{ stack_name }}/config"
 

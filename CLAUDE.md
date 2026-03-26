@@ -38,7 +38,7 @@ This is the Ansible automation and homelab infrastructure repository for the `bp
 │   ├── npm.yml                        # srv1 — Nginx Proxy Manager
 │   ├── whoogle.yml                    # srv1 — Whoogle search
 │   ├── adguardhome.yml                # srv1 — AdGuard Home DNS
-│   ├── yt-dlp-gui.yml                 # srv3 — yt-dlp-gui (build-from-source, LAN-only)
+│   ├── yt-dlp-gui.yml                 # srv3 — yt-dlp-gui (build-from-source, LAN-only port 6080)
 │   ├── firefly.yml                    # srv3 — PostgreSQL + Firefly III
 │   ├── firefly-importer.yml           # srv3 — Firefly Importer (two-pass)
 │   ├── n8n.yml                        # srv4 — postgres-n8n + n8n

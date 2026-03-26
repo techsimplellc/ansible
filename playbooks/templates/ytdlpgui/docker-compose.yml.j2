@@ -1,6 +1,6 @@
 services:
   yt-dlp-gui:
-    build: /opt/ytdlpgui-src
+    build: .
     ports:
       # Bound to LAN IP only — not reachable outside 192.168.68.0/24
       - "192.168.68.13:6080:6080"
