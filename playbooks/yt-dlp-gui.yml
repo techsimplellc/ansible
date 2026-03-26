@@ -1,0 +1,98 @@
+---
+# =============================================================================
+# yt-dlp-gui.yml — Deploy yt-dlp-gui stack to srv3
+# Docs: https://github.com/dsymbol/yt-dlp-gui
+#
+# No published Docker image — source is cloned and built on-host.
+# Source clone: /opt/ytdlpgui-src (pinned to ytdlpgui_git_ref)
+# Stack dir:    /opt/stacks/ytdlpgui  (downloads, config, compose file)
+#
+# Subnet restriction: port 6080 is bound to 192.168.68.13 only.
+# Not exposed externally — do NOT add to Cloudflare tunnel or NPM.
+#
+# Vault: playbooks/vars/ytdlpgui_vault.yml
+#   ytdlpgui_vnc_password : VNC session password (leave blank to disable auth)
+#
+# Run:
+#   ansible-playbook playbooks/yt-dlp-gui.yml -i inventory.yml --ask-vault-pass --become
+# =============================================================================
+
+- name: Deploy yt-dlp-gui stack to srv3
+  hosts: srv3
+  become: true
+  gather_facts: true
+
+  vars_files:
+    - vars/app_versions.yml
+    - vars/ytdlpgui_vault.yml
+
+  vars:
+    stacks_root: /opt/stacks
+    src_dir: /opt/ytdlpgui-src
+    stack_name: ytdlpgui
+
+  pre_tasks:
+    - name: Mount NFS storage from srv6
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/nfs_client.yml"
+
+    - name: Enforce /opt/stacks ownership
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/stacks_owner.yml"
+
+  tasks:
+    - name: Ensure git is installed
+      ansible.builtin.apt:
+        name: git
+        state: present
+        update_cache: false
+
+    - name: Clone yt-dlp-gui source at pinned ref
+      ansible.builtin.git:
+        repo: https://github.com/dsymbol/yt-dlp-gui.git
+        dest: "{{ src_dir }}"
+        version: "{{ ytdlpgui_git_ref }}"
+        force: true
+      register: git_clone
+
+    - name: Create stack runtime directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: root
+        group: docker-admin
+        mode: "2775"
+      loop:
+        - "{{ stacks_root }}/{{ stack_name }}"
+        - "{{ stacks_root }}/{{ stack_name }}/downloads"
+        - "{{ stacks_root }}/{{ stack_name }}/config"
+
+    - name: Render config.toml
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/templates/{{ stack_name }}/config.toml.j2"
+        dest: "{{ stacks_root }}/{{ stack_name }}/config/config.toml"
+        owner: root
+        group: docker-admin
+        mode: "0640"
+
+    - name: Render docker-compose.yml
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/templates/{{ stack_name }}/docker-compose.yml.j2"
+        dest: "{{ stacks_root }}/{{ stack_name }}/docker-compose.yml"
+        owner: root
+        group: docker-admin
+        mode: "0640"
+      register: compose_file
+
+    - name: Build yt-dlp-gui image from source
+      ansible.builtin.command:
+        cmd: docker compose build
+        chdir: "{{ stacks_root }}/{{ stack_name }}"
+      when: git_clone.changed or compose_file.changed
+      register: build_result
+      changed_when: build_result.rc == 0
+
+    - name: Bring yt-dlp-gui stack up
+      ansible.builtin.command:
+        cmd: docker compose up --detach --remove-orphans
+        chdir: "{{ stacks_root }}/{{ stack_name }}"
+      register: up_result
+      changed_when: "'Started' in up_result.stdout or 'Created' in up_result.stdout"

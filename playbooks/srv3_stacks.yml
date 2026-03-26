@@ -2,6 +2,7 @@
 # =============================================================================
 # srv3_stacks.yml — Orchestrator: deploy all stacks to srv3
 # Docs:
+#   yt-dlp-gui      : https://github.com/dsymbol/yt-dlp-gui
 #   Firefly III     : https://docs.firefly-iii.org/
 #   Firefly Importer: https://docs.firefly-iii.org/how-to/data-importer/
 #
@@ -19,5 +20,6 @@
 #   ansible-playbook playbooks/srv3_stacks.yml -i inventory.yml --ask-vault-pass --become
 # =============================================================================
 
+- import_playbook: yt-dlp-gui.yml
 - import_playbook: firefly.yml
 - import_playbook: firefly-importer.yml

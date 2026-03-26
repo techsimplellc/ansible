@@ -28,7 +28,7 @@ This is the Ansible automation and homelab infrastructure repository for the `bp
 │   │
 │   ├── # ── Orchestrators (import_playbook thin wrappers) ──────────────────
 │   ├── srv1_stacks.yml                # → cloudflared, npm, whoogle, adguardhome
-│   ├── srv3_stacks.yml                # → firefly, firefly-importer
+│   ├── srv3_stacks.yml                # → yt-dlp-gui, firefly, firefly-importer
 │   ├── srv4_stacks.yml                # → n8n, calcom, espocrm
 │   ├── srv5_stacks.yml                # → ollama, anythingllm
 │   ├── srv6_stacks.yml                # infra play + → paperless, authentik, simple-office, omnimail
@@ -38,6 +38,7 @@ This is the Ansible automation and homelab infrastructure repository for the `bp
 │   ├── npm.yml                        # srv1 — Nginx Proxy Manager
 │   ├── whoogle.yml                    # srv1 — Whoogle search
 │   ├── adguardhome.yml                # srv1 — AdGuard Home DNS
+│   ├── yt-dlp-gui.yml                 # srv3 — yt-dlp-gui (build-from-source, LAN-only)
 │   ├── firefly.yml                    # srv3 — PostgreSQL + Firefly III
 │   ├── firefly-importer.yml           # srv3 — Firefly Importer (two-pass)
 │   ├── n8n.yml                        # srv4 — postgres-n8n + n8n
@@ -108,7 +109,7 @@ This is the Ansible automation and homelab infrastructure repository for the `bp
 | Host | IP | Role | Key Services |
 |---|---|---|---|
 | srv1 | 192.168.68.11 | Gateway / Proxy | cloudflared, NPM, Whoogle, AdGuard Home |
-| srv3 | 192.168.68.13 | Finance | Firefly III, Firefly Importer, PostgreSQL |
+| srv3 | 192.168.68.13 | Finance | Firefly III, Firefly Importer, yt-dlp-gui, PostgreSQL |
 | srv4 | 192.168.68.14 | Productivity | n8n, Cal.com, EspoCRM, PostgreSQL (x3) |
 | srv5 | 192.168.68.15 | AI / GPU | Ollama, AnythingLLM, NVIDIA GPU, NVMe at /mnt/nvme1 |
 | srv6 | 192.168.68.16 | Storage / Services | OnlyOffice, FileBrowser, Paperless-ngx, OmniMail, rsyslog, NFS server, Cockpit |
@@ -153,7 +154,7 @@ This is the Ansible automation and homelab infrastructure repository for the `bp
 9. **`sed -i` on macOS** — always `sed -i ''` (BSD sed requires empty extension argument)
 10. **NFS server (srv6) must run before NFS client playbooks** — execution order is critical
 11. **Hardening playbook must run before stack playbooks** on any new server
-12. **No `:latest` image tags** — all images must be pinned to a specific version; versions live in `playbooks/vars/app_versions.yml`
+12. **No `:latest` image tags** — all images must be pinned to a specific version; versions live in `playbooks/vars/app_versions.yml`. **Exception: `ytdlpgui_git_ref` uses `"main"`** — the repo has no published releases/tags, and a pinned 40-char SHA triggers the secret scanner (false positive). Revisit if upstream starts tagging releases.
 13. **No `depends_on` across separate compose projects** — `depends_on` only resolves within the same compose project; cross-stack startup ordering is handled by `wait_for` tasks in Ansible
 14. **Never use `ansible_domain` in templates** — it is not defined in inventory and falls back to `example.com`, breaking CSRF, auth redirects, and URL validation. Always hardcode `techsimple.dev` subdomains directly in `.j2` templates.
 15. **Documentation is code** — `.md` files must be updated in the **same commit** as the change that affects them. Before staging any commit, determine independently which docs are impacted and include them. Never open a follow-up commit for docs, and never ask the operator what was affected.
@@ -245,6 +246,7 @@ Per-app vault files and their key variables:
 | `simple_office_vault.yml` | `so_db_password`, `so_jwt_secret`, `so_onlyoffice_jwt_secret`, `so_session_secret`, `so_oidc_client_id`, `so_oidc_client_secret`, `onlyoffice_db_password`, `onlyoffice_jwt_secret` |
 | `omnimail_vault.yml` | `omnimail_db_password`, `omnimail_session_secret`, `omnimail_encryption_key`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`, `MICROSOFT_REDIRECT_URI`, `YAHOO_CLIENT_ID`, `YAHOO_CLIENT_SECRET`, `YAHOO_REDIRECT_URI` |
 | `homarr_vault.yml` | `homarr_secret_key` |
+| `ytdlpgui_vault.yml` | `ytdlpgui_vnc_password` |
 
 ---
 
@@ -270,6 +272,7 @@ ansible-playbook playbooks/cloudflared.yml   -i inventory.yml --ask-vault-pass -
 ansible-playbook playbooks/npm.yml           -i inventory.yml --ask-vault-pass --become
 ansible-playbook playbooks/whoogle.yml       -i inventory.yml --ask-vault-pass --become
 ansible-playbook playbooks/adguardhome.yml   -i inventory.yml --ask-vault-pass --become
+ansible-playbook playbooks/yt-dlp-gui.yml    -i inventory.yml --ask-vault-pass --become
 ansible-playbook playbooks/firefly.yml       -i inventory.yml --ask-vault-pass --become
 ansible-playbook playbooks/firefly-importer.yml -i inventory.yml --ask-vault-pass --become
 ansible-playbook playbooks/n8n.yml           -i inventory.yml --ask-vault-pass --become

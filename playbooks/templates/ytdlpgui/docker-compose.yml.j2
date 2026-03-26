@@ -1,0 +1,13 @@
+services:
+  yt-dlp-gui:
+    build: /opt/ytdlpgui-src
+    ports:
+      # Bound to LAN IP only — not reachable outside 192.168.68.0/24
+      - "192.168.68.13:6080:6080"
+    volumes:
+      - ./downloads:/downloads
+      - ./config/config.toml:/app/config.toml
+    environment:
+      - VNC_PASSWORD={{ ytdlpgui_vnc_password }}
+      - SCREEN_RESOLUTION=1280x800x24
+    restart: unless-stopped

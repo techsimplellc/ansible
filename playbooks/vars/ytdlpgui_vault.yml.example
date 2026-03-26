@@ -1,0 +1,7 @@
+---
+# yt-dlp-gui vault variables
+# Copy to ytdlpgui_vault.yml, fill in values, then encrypt:
+#   ansible-vault encrypt playbooks/vars/ytdlpgui_vault.yml
+
+# VNC session password — leave blank to disable VNC authentication
+ytdlpgui_vnc_password: ""
