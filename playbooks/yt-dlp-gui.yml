@@ -48,6 +48,17 @@
         state: present
         update_cache: false
 
+    - name: Check if stack directory is already a git repository
+      ansible.builtin.stat:
+        path: "{{ stacks_root }}/{{ stack_name }}/.git"
+      register: git_dir
+
+    - name: Remove stack directory if it exists but is not a git repository
+      ansible.builtin.file:
+        path: "{{ stacks_root }}/{{ stack_name }}"
+        state: absent
+      when: not git_dir.stat.exists
+
     - name: Clone yt-dlp-gui source into stack directory
       ansible.builtin.git:
         repo: https://github.com/dsymbol/yt-dlp-gui.git
