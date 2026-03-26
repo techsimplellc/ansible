@@ -10,7 +10,6 @@
 #   NPM         : https://github.com/NginxProxyManager/nginx-proxy-manager/releases
 #   Whoogle     : https://github.com/benbusby/whoogle-search/releases
 #   AdGuard     : https://github.com/AdguardTeam/AdGuardHome/releases
-#   MeTube      : https://github.com/alexta69/metube/releases
 #   Firefly III : https://github.com/firefly-iii/firefly-iii/releases
 #   Firefly Imp : https://github.com/firefly-iii/data-importer/releases
 #   n8n         : https://github.com/n8n-io/n8n/releases
@@ -38,7 +37,6 @@ whoogle_version: "1.2.2"
 adguardhome_version: "0.107.72"
 
 # ── srv3 ──────────────────────────────────────────────────────────────────────
-metube_version: "2026.03.20"
 firefly_version: "6.5.7"
 firefly_importer_version: "2.2.0"
 

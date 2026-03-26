@@ -37,7 +37,7 @@ Self-hosted homelab automation. This repository contains all Ansible playbooks, 
 | Host | IP | Role | Key Services |
 |---|---|---|---|
 | srv1 | 192.168.68.11 | Gateway / Proxy | Cloudflared tunnel, Nginx Proxy Manager, Whoogle, AdGuard Home |
-| srv3 | 192.168.68.13 | Finance | Firefly III, Firefly Importer, MeTube |
+| srv3 | 192.168.68.13 | Finance | Firefly III, Firefly Importer |
 | srv4 | 192.168.68.14 | Productivity | n8n, Cal.com, EspoCRM |
 | srv5 | 192.168.68.15 | AI / GPU | Ollama, AnythingLLM, NVIDIA GPU |
 | srv6 | 192.168.68.16 | Storage / Services | Paperless-ngx, Authentik, Simple Office, OmniMail, NFS server, rsyslog, Cockpit |
@@ -242,7 +242,6 @@ ansible-playbook playbooks/srv1_stacks.yml -i inventory.yml --ask-vault-pass --b
 
 # 3. srv3 — Finance apps (firefly-importer skipped until API token generated)
 ansible-playbook playbooks/firefly.yml   -i inventory.yml --ask-vault-pass --become
-ansible-playbook playbooks/metube.yml    -i inventory.yml --ask-vault-pass --become
 
 # 4. srv4 — Productivity apps
 ansible-playbook playbooks/srv4_stacks.yml -i inventory.yml --ask-vault-pass --become

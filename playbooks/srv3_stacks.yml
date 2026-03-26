@@ -2,7 +2,6 @@
 # =============================================================================
 # srv3_stacks.yml — Orchestrator: deploy all stacks to srv3
 # Docs:
-#   MeTube          : https://github.com/alexta69/metube
 #   Firefly III     : https://docs.firefly-iii.org/
 #   Firefly Importer: https://docs.firefly-iii.org/how-to/data-importer/
 #
@@ -20,6 +19,5 @@
 #   ansible-playbook playbooks/srv3_stacks.yml -i inventory.yml --ask-vault-pass --become
 # =============================================================================
 
-- import_playbook: metube.yml
 - import_playbook: firefly.yml
 - import_playbook: firefly-importer.yml

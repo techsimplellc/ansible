@@ -40,7 +40,6 @@ APPS = [
     ("npm_version",              "Nginx Proxy Manager","NginxProxyManager/nginx-proxy-manager"),
     ("whoogle_version",          "Whoogle",            "benbusby/whoogle-search"),
     ("adguardhome_version",      "AdGuard Home",       "AdguardTeam/AdGuardHome"),
-    ("metube_version",           "MeTube",             "alexta69/metube"),
     ("firefly_version",          "Firefly III",        "firefly-iii/firefly-iii"),
     ("firefly_importer_version", "Firefly Importer",   "firefly-iii/data-importer"),
     ("n8n_version",              "n8n",                "n8n-io/n8n"),
@@ -311,7 +310,7 @@ def main():
         server_map = {
             "cloudflared_version": None,   # infra
             "npm_version": "srv1", "whoogle_version": "srv1", "adguardhome_version": "srv1",
-            "metube_version": "srv3", "firefly_version": "srv3", "firefly_importer_version": "srv3",
+            "firefly_version": "srv3", "firefly_importer_version": "srv3",
             "n8n_version": "srv4", "calcom_version": "srv4", "espocrm_version": "srv4",
             "ollama_version": "srv5", "anythingllm_version": "srv5",
             "paperless_version": "srv6", "paperless_ai_version": "srv6",

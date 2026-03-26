@@ -78,7 +78,6 @@ ansible-playbook playbooks/cloudflared.yml      --syntax-check -i inventory.yml 
 ansible-playbook playbooks/npm.yml              --syntax-check -i inventory.yml --ask-vault-pass
 ansible-playbook playbooks/whoogle.yml          --syntax-check -i inventory.yml --ask-vault-pass
 ansible-playbook playbooks/adguardhome.yml      --syntax-check -i inventory.yml --ask-vault-pass
-ansible-playbook playbooks/metube.yml           --syntax-check -i inventory.yml --ask-vault-pass
 ansible-playbook playbooks/firefly.yml          --syntax-check -i inventory.yml --ask-vault-pass
 ansible-playbook playbooks/firefly-importer.yml --syntax-check -i inventory.yml --ask-vault-pass
 ansible-playbook playbooks/n8n.yml              --syntax-check -i inventory.yml --ask-vault-pass
@@ -196,7 +195,6 @@ docker logs cloudflared 2>&1 | grep -i "connected\|registered" | tail -5
 ### 3c. srv3
 
 ```bash
-ansible-playbook playbooks/metube.yml  -i inventory.yml --ask-vault-pass --become
 ansible-playbook playbooks/firefly.yml -i inventory.yml --ask-vault-pass --become
 ```
 
@@ -204,7 +202,7 @@ ansible-playbook playbooks/firefly.yml -i inventory.yml --ask-vault-pass --becom
 
 ```bash
 docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-# Expected: postgres (5432), metube, firefly-core, firefly-cron all Up
+# Expected: postgres (5432), firefly-core, firefly-cron all Up
 
 curl -sf http://localhost:8080 | grep -i "firefly" && echo "OK: Firefly"
 ```
