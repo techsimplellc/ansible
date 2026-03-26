@@ -38,7 +38,7 @@ This is the Ansible automation and homelab infrastructure repository for the `bp
 │   ├── npm.yml                        # srv1 — Nginx Proxy Manager
 │   ├── whoogle.yml                    # srv1 — Whoogle search
 │   ├── adguardhome.yml                # srv1 — AdGuard Home DNS
-│   ├── yt-dlp-gui.yml                 # srv3 — yt-dlp-gui (build-from-source, LAN-only port 6080)
+│   ├── yt-dlp-gui.yml                 # srv3 — yt-dlp-gui (source pushed from controller, LAN-only :6080)
 │   ├── firefly.yml                    # srv3 — PostgreSQL + Firefly III
 │   ├── firefly-importer.yml           # srv3 — Firefly Importer (two-pass)
 │   ├── n8n.yml                        # srv4 — postgres-n8n + n8n
@@ -154,7 +154,7 @@ This is the Ansible automation and homelab infrastructure repository for the `bp
 9. **`sed -i` on macOS** — always `sed -i ''` (BSD sed requires empty extension argument)
 10. **NFS server (srv6) must run before NFS client playbooks** — execution order is critical
 11. **Hardening playbook must run before stack playbooks** on any new server
-12. **No `:latest` image tags** — all images must be pinned to a specific version; versions live in `playbooks/vars/app_versions.yml`. **Exception: `ytdlpgui_git_ref` uses `"main"`** — the repo has no published releases/tags, and a pinned 40-char SHA triggers the secret scanner (false positive). Revisit if upstream starts tagging releases.
+12. **No `:latest` image tags** — all images must be pinned to a specific version; versions live in `playbooks/vars/app_versions.yml`. **Exception: `ytdlpgui`** has no published image or release tags — source is pushed from `~/git/yt-dlp-gui` on the Ansible controller and built locally on srv3. No version entry in `app_versions.yml`.
 13. **No `depends_on` across separate compose projects** — `depends_on` only resolves within the same compose project; cross-stack startup ordering is handled by `wait_for` tasks in Ansible
 14. **Never use `ansible_domain` in templates** — it is not defined in inventory and falls back to `example.com`, breaking CSRF, auth redirects, and URL validation. Always hardcode `techsimple.dev` subdomains directly in `.j2` templates.
 15. **Documentation is code** — `.md` files must be updated in the **same commit** as the change that affects them. Before staging any commit, determine independently which docs are impacted and include them. Never open a follow-up commit for docs, and never ask the operator what was affected.

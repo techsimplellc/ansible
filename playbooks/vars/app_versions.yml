@@ -37,11 +37,8 @@ whoogle_version: "1.2.2"
 adguardhome_version: "0.107.72"
 
 # ── srv3 ──────────────────────────────────────────────────────────────────────
-# yt-dlp-gui has no published image — built from source at this git ref.
-# Exception to the no-latest rule: a pinned 40-char SHA triggers the repo's
-# secret scanner (false positive: matches AWS key pattern). Using "main" instead.
-# Re-evaluate if the upstream repo starts publishing versioned releases or tags.
-ytdlpgui_git_ref: "main"
+# yt-dlp-gui: no version entry — source is pushed from ~/git/yt-dlp-gui on the
+# Ansible controller; there is no registry image or git ref to pin here.
 firefly_version: "6.5.7"
 firefly_importer_version: "2.2.0"
 

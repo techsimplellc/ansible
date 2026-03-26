@@ -3,13 +3,15 @@
 # yt-dlp-gui.yml — Deploy yt-dlp-gui stack to srv3
 # Docs: https://github.com/dsymbol/yt-dlp-gui
 #
-# No published Docker image — source is cloned and built on-host.
-# Stack dir: /opt/stacks/ytdlpgui  (source, downloads, config, compose file)
+# No published Docker image — source is pushed from the Ansible controller
+# (~/git/yt-dlp-gui on the Mac) to a local disk path on srv3 and built there.
 #
-# The git repo is cloned directly into the stack directory so that
-# `build: .` in docker-compose.yml resolves the Dockerfile correctly.
-# git reset --hard only affects tracked files; config/ and downloads/
-# (untracked) are preserved across updates.
+# Source dir:  /opt/ytdlpgui-src      (local disk on srv3, build context)
+# Stack dir:   /opt/stacks/ytdlpgui  (NFS, persistent downloads + config)
+#
+# Build uses DOCKER_BUILDKIT=0 (classic builder). BuildKit bake pipes the
+# compose config via stdin, losing the filesystem anchor needed to resolve
+# the Dockerfile path. The classic builder resolves it from chdir correctly.
 #
 # Subnet restriction: port 6080 is bound to 192.168.68.13 only.
 # Not exposed externally — do NOT add to Cloudflare tunnel or NPM.
@@ -33,6 +35,7 @@
   vars:
     stacks_root: /opt/stacks
     stack_name: ytdlpgui
+    src_dir: /opt/ytdlpgui-src
 
   pre_tasks:
     - name: Mount NFS storage from srv6
@@ -42,32 +45,17 @@
       ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/stacks_owner.yml"
 
   tasks:
-    - name: Ensure git is installed
-      ansible.builtin.apt:
-        name: git
-        state: present
-        update_cache: false
+    - name: Push yt-dlp-gui source from controller to srv3 local disk
+      ansible.builtin.copy:
+        src: "{{ lookup('env', 'HOME') }}/git/yt-dlp-gui/"
+        dest: "{{ src_dir }}/"
+        owner: root
+        group: root
+        mode: preserve
+        directory_mode: "0755"
+      register: source_copy
 
-    - name: Check if stack directory is already a git repository
-      ansible.builtin.stat:
-        path: "{{ stacks_root }}/{{ stack_name }}/.git"
-      register: git_dir
-
-    - name: Remove stack directory if it exists but is not a git repository
-      ansible.builtin.file:
-        path: "{{ stacks_root }}/{{ stack_name }}"
-        state: absent
-      when: not git_dir.stat.exists
-
-    - name: Clone yt-dlp-gui source into stack directory
-      ansible.builtin.git:
-        repo: https://github.com/dsymbol/yt-dlp-gui.git
-        dest: "{{ stacks_root }}/{{ stack_name }}"
-        version: "{{ ytdlpgui_git_ref }}"
-        force: true
-      register: git_clone
-
-    - name: Create persistent subdirectories
+    - name: Create stack runtime directories on NFS
       ansible.builtin.file:
         path: "{{ item }}"
         state: directory
@@ -75,6 +63,7 @@
         group: docker-admin
         mode: "2775"
       loop:
+        - "{{ stacks_root }}/{{ stack_name }}"
         - "{{ stacks_root }}/{{ stack_name }}/downloads"
         - "{{ stacks_root }}/{{ stack_name }}/config"
 
@@ -100,11 +89,11 @@
         cmd: docker compose build
         chdir: "{{ stacks_root }}/{{ stack_name }}"
       environment:
-        # BuildKit bake pipes the compose config via stdin, losing the working
-        # directory anchor — Dockerfile resolution fails. Disable BuildKit so
-        # the classic builder resolves the build context from chdir directly.
+        # BuildKit bake pipes the compose config via stdin, losing the
+        # filesystem anchor needed to resolve the Dockerfile path.
+        # Classic builder resolves build context from chdir directly.
         DOCKER_BUILDKIT: "0"
-      when: git_clone.changed or compose_file.changed
+      when: source_copy.changed or compose_file.changed
       register: build_result
       changed_when: build_result.rc == 0
 
