@@ -159,6 +159,12 @@ This is the Ansible automation and homelab infrastructure repository for the `bp
 13. **No `depends_on` across separate compose projects** — `depends_on` only resolves within the same compose project; cross-stack startup ordering is handled by `wait_for` tasks in Ansible
 14. **Never use `ansible_domain` in templates** — it is not defined in inventory and falls back to `example.com`, breaking CSRF, auth redirects, and URL validation. Always hardcode `techsimple.dev` subdomains directly in `.j2` templates.
 15. **Documentation is code** — `.md` files must be updated in the **same commit** as the change that affects them. Before staging any commit, determine independently which docs are impacted and include them. Never open a follow-up commit for docs, and never ask the operator what was affected.
+16. **No inline secrets** — all credentials go in vault / `.env` files, never committed plaintext
+17. **No `--no-verify`** on git commits unless explicitly authorized by the operator
+18. **Minimal blast radius** — confirm before destructive operations (drop tables, force-push, rm -rf, etc.)
+19. **Regression tests are part of every bug fix** — when a bug is resolved, a test that would have caught it must be written and committed in the same PR/commit. Never close a bug without a corresponding test.
+20. **Cross-repo CLAUDE.md rules** — any rule added to this file that is not specific to this application (i.e., it would apply equally to any project) must also be added to `~/git/repo-template/CLAUDE.md` if that file exists.
+21. **Startup sync from repo-template** — at the start of every session, if `~/git/repo-template/CLAUDE.md` exists, check whether any rules it contains are absent from this project's `CLAUDE.md`. If any are missing, add them before proceeding with the user's request.
 
 ---
 
@@ -316,6 +322,44 @@ ansible all -i inventory.yml -m shell \
 - **Claude Code via Ollama:** `OLLAMA_HOST=http://192.168.68.15:11434 ollama launch claude`
 - **Requires Ollama v0.15+** for `ollama launch` command
 - **Minimum context for Claude Code:** 64k tokens
+
+---
+
+## Permissions (settings.local.json)
+
+All tools pre-approved — no prompts:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Bash(*)",
+      "Read",
+      "Write",
+      "Edit",
+      "Glob",
+      "Grep"
+    ]
+  }
+}
+```
+
+## Settings Changes
+
+Always use the `/update-config` skill for any changes to `settings.json` or `settings.local.json`.
+
+---
+
+## Secret Scanning
+
+This repo uses a pre-commit hook at `hooks/pre-commit` that blocks commits containing plaintext secrets.
+After cloning, activate it:
+
+```bash
+./scripts/setup-hooks.sh
+```
+
+To bypass in a genuine emergency: `git commit --no-verify` — use sparingly, never for actual secrets.
 
 ---
 
