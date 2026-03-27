@@ -24,7 +24,7 @@ This is the Ansible automation and homelab infrastructure repository for the `bp
 │   ├── ubuntu_pro.yml
 │   ├── harden.yml
 │   ├── setup_nginx.yml
-│   ├── ufw.yml
+│   ├── ufw.yml                        # all servers — UFW + tufw terminal UI
 │   │
 │   ├── # ── Orchestrators (import_playbook thin wrappers) ──────────────────
 │   ├── srv1_stacks.yml                # → cloudflared, npm, whoogle, adguardhome
@@ -53,7 +53,6 @@ This is the Ansible automation and homelab infrastructure repository for the `bp
 │   ├── omnimail.yml                   # srv6 — OmniMail (build-from-source)
 │   ├── homarr.yml                     # dev1 — Homarr dashboard
 │   ├── cockpit-dev1.yml               # dev1 — Cockpit web console (systemd)
-│   ├── tufw.yml                       # all servers — tufw terminal UI for UFW
 │   │
 │   ├── vars/                          # Per-app vault files (encrypted with same password)
 │   │   ├── app_versions.yml           # Pinned image versions (plaintext, NOT encrypted)
@@ -295,12 +294,15 @@ ansible-playbook playbooks/simple-office.yml -i inventory.yml --ask-vault-pass -
 ansible-playbook playbooks/omnimail.yml      -i inventory.yml --ask-vault-pass --become
 ansible-playbook playbooks/homarr.yml        -i inventory.yml --ask-vault-pass --become
 ansible-playbook playbooks/cockpit-dev1.yml  -i inventory.yml --ask-vault-pass --become
-ansible-playbook playbooks/tufw.yml          -i inventory.yml --ask-vault-pass --become
 
 # ── Tag-scoped runs ───────────────────────────────────────────────────────────
 # Harden only specific tasks
 ansible-playbook playbooks/harden.yml -i inventory.yml --tags rsyslog --ask-vault-pass --become
 ansible-playbook playbooks/harden.yml -i inventory.yml --tags cis --ask-vault-pass --become
+# UFW only (skip tufw install)
+ansible-playbook playbooks/ufw.yml -i inventory.yml --tags ufw --ask-vault-pass --become
+# tufw only (skip UFW rules)
+ansible-playbook playbooks/ufw.yml -i inventory.yml --tags tufw --ask-vault-pass --become
 # Paperless pass 1 (skip AI/GPT requiring API token)
 ansible-playbook playbooks/paperless.yml -i inventory.yml --ask-vault-pass --become --skip-tags ai,gpt
 # Simple Office pass 1 (infrastructure only, before Authentik OIDC setup)

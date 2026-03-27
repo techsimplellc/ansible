@@ -1,6 +1,6 @@
 ---
 # =============================================================================
-# ufw.yml — Install and manage UFW on homelab servers
+# ufw.yml — Install and manage UFW + tufw on homelab servers
 #
 # Applies the baseline UFW policy on farm and dev hosts:
 #   - Default deny incoming / allow outgoing / deny routed
@@ -8,6 +8,7 @@
 #   - Allow all traffic from LAN subnet
 #   - Enable UFW
 #   - srv1 only: allow Cloudflare IPv4 ranges to port 443/tcp (NPM)
+#   - Install tufw (terminal UI for UFW) — https://github.com/peltho/tufw
 #
 # Safe to re-run at any time — all tasks are idempotent.
 # Cloudflare IP list lives in group_vars/all/vars.yml and is kept current
@@ -20,18 +21,35 @@
 # Run (single server):
 #   ansible-playbook playbooks/ufw.yml -i inventory.yml \
 #     --limit srv1 --ask-vault-pass --become
+#
+# Tags: ufw, tufw
 # =============================================================================
 
-- name: Install and configure UFW on homelab servers
+- name: Install and configure UFW and tufw on homelab servers
   hosts: "{{ target | default('farm:dev') }}"
   gather_facts: true
   become: true
+
+  vars_files:
+    - vars/app_versions.yml
+
+  vars:
+    tufw_deb_url: "https://github.com/peltho/tufw/releases/download/v{{ tufw_version }}/tufw_{{ tufw_version }}_linux_amd64.deb"
+    tufw_deb_dest: "/tmp/tufw_{{ tufw_version }}_linux_amd64.deb"
 
   tasks:
     - name: Install UFW
       ansible.builtin.apt:
         name: ufw
         state: present
+      tags: ufw
+
+    - name: Disable IPv6 in UFW
+      ansible.builtin.lineinfile:
+        path: /etc/default/ufw
+        regexp: '^IPV6='
+        line: 'IPV6=no'
+      notify: Reload UFW
       tags: ufw
 
     - name: Set UFW default incoming policy to deny
@@ -84,3 +102,38 @@
       loop: "{{ cloudflare_ipv4_ranges }}"
       when: inventory_hostname == 'srv1'
       tags: ufw
+
+    # ── tufw (terminal UI for UFW) ─────────────────────────────────────────
+    - name: Check installed tufw version
+      ansible.builtin.command: tufw --version
+      register: tufw_installed
+      changed_when: false
+      failed_when: false
+      tags: tufw
+
+    - name: Download tufw .deb
+      ansible.builtin.get_url:
+        url: "{{ tufw_deb_url }}"
+        dest: "{{ tufw_deb_dest }}"
+        mode: "0644"
+      when: tufw_installed.rc != 0 or tufw_version not in tufw_installed.stdout
+      tags: tufw
+
+    - name: Install tufw .deb
+      ansible.builtin.apt:
+        deb: "{{ tufw_deb_dest }}"
+        state: present
+      when: tufw_installed.rc != 0 or tufw_version not in tufw_installed.stdout
+      tags: tufw
+
+    - name: Remove downloaded .deb
+      ansible.builtin.file:
+        path: "{{ tufw_deb_dest }}"
+        state: absent
+      when: tufw_installed.rc != 0 or tufw_version not in tufw_installed.stdout
+      tags: tufw
+
+  handlers:
+    - name: Reload UFW
+      community.general.ufw:
+        state: reloaded
