@@ -65,3 +65,7 @@ simple_office_web_version: "REPLACE_ME"
 
 # ── dev1 ──────────────────────────────────────────────────────────────────────
 homarr_version: "v1.56.1"
+
+# ── All servers ───────────────────────────────────────────────────────────────
+# tufw: https://github.com/peltho/tufw/releases
+tufw_version: "0.2.7"
