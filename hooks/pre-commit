@@ -16,7 +16,7 @@ PATTERNS=(
   "Google OAuth client ID:[0-9]+-[0-9a-z]+\.apps\.googleusercontent\.com"
   "AWS access key:AKIA[0-9A-Z]{16}"
   "AWS secret key:['\"]?[0-9a-zA-Z/+]{40}['\"]?"
-  "Private key header:-----BEGIN (RSA |EC |OPENSSH |)PRIVATE KEY-----"
+  "Private key header:-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----"
   "Generic password in YAML:password:\s+['\"]?[A-Za-z0-9!@#$%^&*()_+\-=]{12,}['\"]?"
   "Generic secret in YAML:secret[_\s]*:\s+['\"]?[A-Za-z0-9!@#$%^&*()_+\-=]{12,}['\"]?"
   "Generic token in YAML:token:\s+['\"]?[A-Za-z0-9._\-]{20,}['\"]?"
