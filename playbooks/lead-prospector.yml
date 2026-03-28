@@ -1,0 +1,148 @@
+---
+# =============================================================================
+# lead-prospector.yml — Deploy Lead Prospector stack to srv4
+# Source: ~/git/lead_generator on the Ansible controller
+#
+# Three nginx:1.27-alpine containers serving a static lead research UI:
+#   prospector-frontend  — Dashboard            (LAN-only :9001)
+#   prospector-gbp       — Google Business      (LAN-only :9002)
+#   prospector-sos       — Secretary of State   (LAN-only :9003)
+#
+# Source is pushed from ~/git/lead_generator on the Ansible controller
+# to /opt/stacks/lead-prospector on srv4 and served directly (no build step).
+#
+# Shared files (config.json, metrics.json) are seeded on first deploy
+# and never overwritten on subsequent runs (force: false).
+#
+# No vault required — EspoCRM API key and Google API key are configured
+# via the browser UI and persisted to shared/config/config.json.
+#
+# Not exposed externally — LAN-only, do NOT add to Cloudflare tunnel or NPM.
+#
+# Run:
+#   ansible-playbook playbooks/lead-prospector.yml -i inventory.yml --ask-vault-pass --become
+# =============================================================================
+
+- name: Deploy Lead Prospector stack to srv4
+  hosts: srv4
+  become: true
+  gather_facts: true
+
+  vars:
+    stacks_root: /opt/stacks
+    stack_name: lead-prospector
+    deploy_dir: "{{ stacks_root }}/{{ stack_name }}"
+    src: "{{ lookup('env', 'HOME') }}/git/lead_generator"
+
+  pre_tasks:
+    - name: Mount NFS storage from srv6
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/nfs_client.yml"
+
+    - name: Enforce /opt/stacks ownership
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/stacks_owner.yml"
+
+  tasks:
+    - name: Create deployment directory structure
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: root
+        group: docker-admin
+        mode: "2775"
+      loop:
+        - "{{ deploy_dir }}"
+        - "{{ deploy_dir }}/frontend/dist"
+        - "{{ deploy_dir }}/gbp-app/dist"
+        - "{{ deploy_dir }}/sos-app/dist"
+        - "{{ deploy_dir }}/nginx"
+        - "{{ deploy_dir }}/shared/data"
+        - "{{ deploy_dir }}/shared/config"
+
+    - name: Push docker-compose.yml from controller
+      ansible.builtin.copy:
+        src: "{{ src }}/docker-compose.yml"
+        dest: "{{ deploy_dir }}/docker-compose.yml"
+        owner: root
+        group: docker-admin
+        mode: "0640"
+      register: compose_file
+
+    - name: Push nginx configs from controller
+      ansible.builtin.copy:
+        src: "{{ src }}/nginx/{{ item }}"
+        dest: "{{ deploy_dir }}/nginx/{{ item }}"
+        owner: root
+        group: docker-admin
+        mode: "0640"
+      loop:
+        - frontend.conf
+        - app.conf
+
+    - name: Push frontend app from controller
+      ansible.builtin.copy:
+        src: "{{ src }}/frontend/dist/index.html"
+        dest: "{{ deploy_dir }}/frontend/dist/index.html"
+        owner: root
+        group: docker-admin
+        mode: "0644"
+      register: frontend_copy
+
+    - name: Push GBP app from controller
+      ansible.builtin.copy:
+        src: "{{ src }}/gbp-app/dist/index.html"
+        dest: "{{ deploy_dir }}/gbp-app/dist/index.html"
+        owner: root
+        group: docker-admin
+        mode: "0644"
+
+    - name: Push SoS app from controller
+      ansible.builtin.copy:
+        src: "{{ src }}/sos-app/dist/index.html"
+        dest: "{{ deploy_dir }}/sos-app/dist/index.html"
+        owner: root
+        group: docker-admin
+        mode: "0644"
+
+    - name: Seed metrics.json if not present
+      ansible.builtin.copy:
+        src: "{{ src }}/shared/data/metrics.json"
+        dest: "{{ deploy_dir }}/shared/data/metrics.json"
+        owner: root
+        group: docker-admin
+        mode: "0644"
+        force: false
+
+    - name: Seed config.json if not present
+      ansible.builtin.copy:
+        src: "{{ src }}/shared/config/config.json"
+        dest: "{{ deploy_dir }}/shared/config/config.json"
+        owner: root
+        group: docker-admin
+        mode: "0644"
+        force: false
+
+    - name: Pull nginx:1.27-alpine image
+      ansible.builtin.command:
+        cmd: docker pull nginx:1.27-alpine
+      register: pull_result
+      changed_when: "'Status: Downloaded newer image' in pull_result.stdout"
+
+    - name: Bring Lead Prospector stack up
+      ansible.builtin.command:
+        cmd: docker compose up --detach --remove-orphans
+        chdir: "{{ deploy_dir }}"
+      register: up_result
+      changed_when: "'Started' in up_result.stdout or 'Created' in up_result.stdout"
+
+    - name: Restart containers if source files changed
+      ansible.builtin.command:
+        cmd: docker compose restart
+        chdir: "{{ deploy_dir }}"
+      when: compose_file.changed or frontend_copy.changed
+      changed_when: true
+
+    - name: Wait for frontend to be reachable
+      ansible.builtin.wait_for:
+        host: 127.0.0.1
+        port: 9001
+        timeout: 30

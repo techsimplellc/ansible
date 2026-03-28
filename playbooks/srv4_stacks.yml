@@ -2,20 +2,23 @@
 # =============================================================================
 # srv4_stacks.yml — Orchestrator: deploy all stacks to srv4
 # Docs:
-#   n8n    : https://docs.n8n.io/hosting/installation/docker/
-#   cal.com: https://cal.com/docs/self-hosting/docker
-#   EspoCRM: https://docs.espocrm.com/administration/docker/
+#   n8n             : https://docs.n8n.io/hosting/installation/docker/
+#   cal.com         : https://cal.com/docs/self-hosting/docker
+#   EspoCRM         : https://docs.espocrm.com/administration/docker/
+#   Lead Prospector : ~/git/lead_generator/README.md
 #
 # This orchestrator imports individual app playbooks. To deploy a single app,
 # run its playbook directly (e.g. ansible-playbook playbooks/n8n.yml).
 #
 # Each app gets its own dedicated PostgreSQL container.
-# cal.com and EspoCRM exposed via cloudflared tunnel; n8n is LAN-only.
+# cal.com and EspoCRM exposed via cloudflared tunnel; n8n and lead-prospector
+# are LAN-only.
 #
 # Vault requirements:
 #   playbooks/vars/n8n_vault.yml     — n8n_db_password, n8n_encryption_key
 #   playbooks/vars/calcom_vault.yml  — calcom_db_password, calcom_nextauth_secret, calendso_encryption_key
 #   playbooks/vars/espocrm_vault.yml — espocrm_db_password, espocrm_admin_password
+#   lead-prospector: no vault required
 #
 # Run all stacks:
 #   ansible-playbook playbooks/srv4_stacks.yml -i inventory.yml --ask-vault-pass --become
@@ -24,3 +27,4 @@
 - import_playbook: n8n.yml
 - import_playbook: calcom.yml
 - import_playbook: espocrm.yml
+- import_playbook: lead-prospector.yml

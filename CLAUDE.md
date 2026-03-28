@@ -45,6 +45,7 @@ This is the Ansible automation and homelab infrastructure repository for the `bp
 │   ├── n8n.yml                        # srv4 — postgres-n8n + n8n
 │   ├── calcom.yml                     # srv4 — postgres-calcom + cal.com
 │   ├── espocrm.yml                    # srv4 — postgres-espocrm + EspoCRM
+│   ├── lead-prospector.yml            # srv4 — Lead Prospector (source pushed from ~/git/lead_generator, LAN-only :9001-9003, /opt/stacks/lead-prospector)
 │   ├── ollama.yml                     # srv5 — Ollama + NVMe + NVIDIA toolkit
 │   ├── anythingllm.yml                # srv5 — AnythingLLM
 │   ├── paperless.yml                  # srv6 — postgres-paperless + Paperless-ngx + AI/GPT
@@ -111,7 +112,7 @@ This is the Ansible automation and homelab infrastructure repository for the `bp
 |---|---|---|---|
 | srv1 | 192.168.68.11 | Gateway / Proxy | cloudflared, NPM, Whoogle, AdGuard Home |
 | srv3 | 192.168.68.13 | Finance / Media | Firefly III, Firefly Importer, Jellyfin, yt-dlp-gui, PostgreSQL |
-| srv4 | 192.168.68.14 | Productivity | n8n, Cal.com, EspoCRM, PostgreSQL (x3) |
+| srv4 | 192.168.68.14 | Productivity | n8n, Cal.com, EspoCRM, Lead Prospector, PostgreSQL (x3) |
 | srv5 | 192.168.68.15 | AI / GPU | Ollama, AnythingLLM, NVIDIA GPU, NVMe at /mnt/nvme1 |
 | srv6 | 192.168.68.16 | Storage / Services | OnlyOffice, FileBrowser, Paperless-ngx, OmniMail, rsyslog, NFS server, Cockpit |
 | dev1 | 192.168.68.21 | Development | Homarr dashboard, Cockpit |
@@ -286,6 +287,7 @@ ansible-playbook playbooks/firefly-importer.yml -i inventory.yml --ask-vault-pas
 ansible-playbook playbooks/n8n.yml           -i inventory.yml --ask-vault-pass --become
 ansible-playbook playbooks/calcom.yml        -i inventory.yml --ask-vault-pass --become
 ansible-playbook playbooks/espocrm.yml       -i inventory.yml --ask-vault-pass --become
+ansible-playbook playbooks/lead-prospector.yml -i inventory.yml --ask-vault-pass --become
 ansible-playbook playbooks/ollama.yml        -i inventory.yml --ask-vault-pass --become
 ansible-playbook playbooks/anythingllm.yml   -i inventory.yml --ask-vault-pass --become
 ansible-playbook playbooks/paperless.yml     -i inventory.yml --ask-vault-pass --become
