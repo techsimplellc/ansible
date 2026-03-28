@@ -67,6 +67,17 @@
         mode: "0640"
       register: compose_file
 
+    - name: Push config-api from controller
+      ansible.builtin.copy:
+        src: "{{ src }}/config-api/{{ item }}"
+        dest: "{{ deploy_dir }}/config-api/{{ item }}"
+        owner: root
+        group: docker-admin
+        mode: "0644"
+      loop:
+        - server.js
+        - Dockerfile
+
     - name: Push nginx configs from controller
       ansible.builtin.copy:
         src: "{{ src }}/nginx/{{ item }}"
