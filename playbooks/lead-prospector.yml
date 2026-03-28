@@ -67,6 +67,14 @@
         mode: "0640"
       register: compose_file
 
+    - name: Ensure config-api directory exists
+      ansible.builtin.file:
+        path: "{{ deploy_dir }}/config-api"
+        state: directory
+        owner: root
+        group: docker-admin
+        mode: "0750"
+
     - name: Push config-api from controller
       ansible.builtin.copy:
         src: "{{ src }}/config-api/{{ item }}"
