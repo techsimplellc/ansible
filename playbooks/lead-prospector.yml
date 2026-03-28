@@ -105,21 +105,71 @@
 
     - name: Seed metrics.json if not present
       ansible.builtin.copy:
-        src: "{{ src }}/shared/data/metrics.json"
         dest: "{{ deploy_dir }}/shared/data/metrics.json"
         owner: root
         group: docker-admin
         mode: "0644"
         force: false
+        content: |
+          {
+            "gbp": {
+              "lastRun": null,
+              "totalSearches": 0,
+              "totalLeadsFound": 0,
+              "totalExported": 0,
+              "totalFailed": 0,
+              "lastKeywords": [],
+              "lastLocation": null,
+              "history": []
+            },
+            "sos": {
+              "lastRun": null,
+              "totalSearches": 0,
+              "totalLeadsFound": 0,
+              "totalExported": 0,
+              "totalFailed": 0,
+              "lastState": null,
+              "lastEntityType": null,
+              "history": []
+            }
+          }
 
     - name: Seed config.json if not present
       ansible.builtin.copy:
-        src: "{{ src }}/shared/config/config.json"
         dest: "{{ deploy_dir }}/shared/config/config.json"
         owner: root
         group: docker-admin
         mode: "0644"
         force: false
+        content: |
+          {
+            "googleApiKey": "",
+            "espoUrl": "",
+            "espoUser": "admin",
+            "espoKey": "",
+            "espoAuthMethod": "apikey",
+            "espoSource": "Lead Prospector",
+            "fieldMap": {
+              "name": "name",
+              "phone": "phoneNumber",
+              "address": "address",
+              "city": "addressCity",
+              "state": "addressState",
+              "zip": "addressPostalCode",
+              "website": "website",
+              "category": "industry",
+              "rating": "rating__c",
+              "reviewCount": "reviewCount__c",
+              "placeId": "googlePlaceId__c",
+              "hours": "description",
+              "source": "leadSource",
+              "sosEntityType": "sosEntityType__c",
+              "sosRegisteredAgent": "sosRegisteredAgent__c",
+              "sosRegistrationDate": "sosRegistrationDate__c",
+              "sosStatus": "sosStatus__c",
+              "sosUbi": "sosUbi__c"
+            }
+          }
 
     - name: Pull nginx:1.27-alpine image
       ansible.builtin.command:
